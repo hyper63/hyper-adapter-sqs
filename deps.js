@@ -1,0 +1,1 @@
+export { SQSQueue } from 'https://deno.land/x/sqs@0.3.6/mod.ts'
