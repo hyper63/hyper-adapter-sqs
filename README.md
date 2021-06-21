@@ -1,4 +1,8 @@
-# README
+# hyper-adapter-sqs
+
+[![nest badge](https://nest.land/badge.svg)](https://nest.land/package/hyper-adapter-sqs)
+[![current version](https://img.shields.io/github/tag/hyper63/hyper-adapter-sqs)](https://github.com/hyper63/hyper-adapter-sqs/tags/)
+[![Test](https://github.com/hyper63/hyper-adapter-sqs/actions/workflows/test.yml/badge.svg)](https://github.com/hyper63/hyper-adapter-sqs/actions/workflows/test.yml)
 
 AWS SQS Adapter for hyper Queue port
 
