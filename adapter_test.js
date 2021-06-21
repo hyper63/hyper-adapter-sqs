@@ -11,3 +11,7 @@ test('index queue', () => {
   const result = await a.index()
   assertEquals(result.ok, true)
 })
+
+test('create queue', () => {
+  const result = await a.create()
+})

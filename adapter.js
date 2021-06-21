@@ -1,42 +1,31 @@
+import { crocks, R } from './deps.js'
+
+const { Async } = crocks
+const { pluck } = R
+
 const noop = () => null
 
-// connectString = aws://key:secret@region/account
-// new Url(connectString)
-
-export function adapter(configUrl, SQSQueue) {
-  const config = new URL(configUrl)
-  const AWS_ACCESS_KEY_ID = config.username
-  const AWS_ACCESS_SECRET_KEY = config.password
-  const AWS_REGION = config.host
-  const AWS_ACCOUNT = config.pathname
-
-  const qUrl = name => `https://sqs.${AWS_REGION}.amazonaws.com${AWS_ACCOUNT}/${name}`
-  let queues = {}
-
-  function createQueue(name, target, secret) {
-    if (queues[name]) {
-      return queues[name]
-    } else {
-      const queue = new SQSQueue({
-        queueURL: qUrl(name),
-        accessKeyID: AWS_ACCESS_KEY_ID,
-        secretKey: AWS_SECRET_ACCESS_KEY,
-        region: AWS_REGION,
-      });
-      // TODO: need to store queue info in a 
-      // s3 bucket hyper-sqs-${name}?
-      queues[name] = ({ queue, target, secret })
-      return queue
-    }
-  }
+export function adapter(svcName, aws) {
+  const getObject = Async.fromPromise(aws.getObject)
+  const createBucket = Async.fromPromise(aws.createBucket)
+  const createQueue = Async.fromPromise(aws.createQueue)
+  const putObject = Async.fromPromise(aws.putObject)
 
   return Object.freeze({
-    // list queues
-    index: noop,
+    // list queues 
+    index: getObject(svcName, 'queues').map(pluck('name')).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
-      createQueue(name, target, secret)
-      return Promise.resolve({ ok: true })
+      return createBucket(svcName)
+        .chain(createQueue(svcName))
+        .chain(getObject(svcName, 'queues'))
+        .bichain(
+          () => putObject(svcName, 'queues', {}).map(() => ({})),
+          identity
+        )
+        .map(assoc(name, { target, secret }))
+        .chain(queues => putObject(svcName, 'queues', queues))
+        .toPromise()
     },
     // delete queue
     delete: noop,
