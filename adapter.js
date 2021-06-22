@@ -28,7 +28,9 @@ export function adapter(svcName, aws) {
         ]))
         .chain(() => getObject(svcName, 'queues'))
         .bichain(
-          () => putObject(svcName, 'queues', {}).map(() => ({})),
+          (err) => err.message.includes('NoSuchKey')
+            ? putObject(svcName, 'queues', {}).map(() => ({}))
+            : Async.Rejected(err),
           Async.Resolved
         )
         .map(assoc(name, { target, secret }))
