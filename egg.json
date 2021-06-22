@@ -9,7 +9,8 @@
   "unstable": false,
   "unlisted": false,
   "files": [
-    "./*"
+    "./*",
+    "./lib/**/*"
   ],
   "ignore": [
     "./package.json",
