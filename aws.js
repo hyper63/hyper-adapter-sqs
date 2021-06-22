@@ -1,0 +1,11 @@
+export { default as createBucket } from "./lib/s3/create-bucket.js";
+export { default as createQueue } from "./lib/sqs/create-queue.js";
+export { default as getObject } from "./lib/s3/get-object.js";
+export { default as putObject } from "./lib/s3/put-object.js";
+export { default as deleteObject } from "./lib/s3/delete-object.js";
+export { default as deleteQueue } from "./lib/sqs/delete-queue.js";
+export { default as deleteBucket } from "./lib/s3/delete-bucket.js";
+export { default as getQueueUrl } from "./lib/sqs/get-queue-url.js";
+export { default as sendMessage } from "./lib/sqs/send-message.js";
+export { default as receiveMessage } from "./lib/sqs/receive-message.js";
+export { default as deleteMessage } from "./lib/sqs/delete-message.js";

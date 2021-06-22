@@ -1,35 +1,50 @@
-let doc = {}
+let doc = {};
 
 export function createQueue(name) {
-  return Promise.resolve(`https://sqs.us-east-1.amazonaws.com/1234/hyper-queue-${name}`)
+  return Promise.resolve(
+    `https://sqs.us-east-1.amazonaws.com/1234/hyper-queue-${name}`,
+  );
 }
 
 export function createBucket(name) {
-  return Promise.resolve(`/hyper-queue-${name}`)
+  return Promise.resolve(`/hyper-queue-${name}`);
 }
 
 export function putObject(svc, name, value) {
-  doc = value
-  return Promise.resolve({ ok: true })
+  doc = value;
+  return Promise.resolve({ ok: true });
 }
 
 export function getObject(svc, name) {
-  return Promise.resolve(doc)
+  return Promise.resolve(doc);
 }
 
 export function getQueueUrl(svc) {
-  return Promise.resolve(`https://sqs.us-east-1.amazonaws.com/1234/hyper-queue-${svc}`)
+  return Promise.resolve(
+    `https://sqs.us-east-1.amazonaws.com/1234/hyper-queue-${svc}`,
+  );
 }
 
 export function deleteObject(svc, name) {
-  return Promise.resolve({ ok: true })
+  return Promise.resolve({ ok: true });
 }
 
 export function deleteQueue(url) {
-
-  return Promise.resolve({ ok: true })
+  return Promise.resolve({ ok: true });
 }
 
 export function deleteBucket(name) {
-  return Promise.resolve({ ok: true })
+  return Promise.resolve({ ok: true });
+}
+
+export function sendMessage(url, msg) {
+  return Promise.resolve({ ok: true });
+}
+
+export function receiveMessage(url, count) {
+  return Promise.resolve([]);
+}
+
+export function deleteMessage(url, handle) {
+  return Promise.resolve({ ok: true });
 }
