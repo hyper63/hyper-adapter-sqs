@@ -17,3 +17,4 @@ jobs:
       - run: ./scripts/test.sh
         env:
           CI: true
+          DENO_ENV: test
