@@ -1,17 +1,40 @@
+import 'https://deno.land/x/dotenv@v2.0.0/load.ts'
+
+import createBucket from './lib/s3/create-bucket.js'
+import createQueue from './lib/sqs/create-queue.js'
+import getObject from './lib/s3/get-object.js'
+import putObject from './lib/s3/put-object.js'
+
+/*
+import deleteObject from './lib/s3/delete-object.js'
+import deleteQueue from './lib/sqs/delete-queue.js'
+import deleteBucket from './lib/s3/delete-bucket.js'
+import sendMessage from './lib/sqs/send-message.js'
+import receiveMessage from './lib/sqs/receive-message.js'
+import deleteMessage from './lib/sqs/delete-message.js'
+*/
 import { assertEquals } from './deps_dev.js'
 import { adapter } from './adapter.js'
 
 const test = Deno.test
-const a = adapter({
-  AWS_ACCESS_KEY_ID,
-  AWS_SECRET_ACCESS_KEY
-})
+const aws = {
+  createBucket, createQueue, getObject, putObject
+  /*, putObject, getObject, deleteObject,
+  deleteQueue, deleteBucket, sendMessage, receiveMessage, deleteMessage
+  */
+}
 
-test('index queue', () => {
-  const result = await a.index()
-  assertEquals(result.ok, true)
-})
+const a = adapter('foobar', aws)
 
-test('create queue', () => {
-  const result = await a.create()
+test('create queue', async () => {
+
+  const result = await a.create({
+    name: 'baz',
+    target: 'https://example.com',
+    secret: 'secret'
+  })
+  console.log(result)
+  //assertEquals(result.ok, true)
+  assertEquals(true, true)
+
 })

@@ -6,17 +6,19 @@ const { assoc, identity, pluck } = R
 const noop = () => null
 
 export function adapter(svcName, aws) {
-  const getObject = Async.fromPromise(aws.getObject)
   const createBucket = Async.fromPromise(aws.createBucket)
   const createQueue = Async.fromPromise(aws.createQueue)
+  const getObject = Async.fromPromise(aws.getObject)
+  const putObject = Async.fromPromise(aws.putObject)
+  /*
   const putObject = Async.fromPromise(aws.putObject)
   const deleteQueue = Async.fromPromise(aws.deleteQueue)
   const deleteBucket = Async.fromPromise(aws.deleteBucket)
   const deleteObject = Async.fromPromise(aws.deleteObject)
-
+  */
   return Object.freeze({
     // list queues 
-    index: getObject(svcName, 'queues').map(pluck('name')).toPromise(),
+    //index: getObject(svcName, 'queues').map(pluck('name')).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
       return Async.of(svcName)
@@ -34,6 +36,7 @@ export function adapter(svcName, aws) {
         .toPromise()
     },
     // delete queue
+    /*
     delete: name => getObject(svcName, 'queues')
       .map(dissoc(name))
       .chain(queues =>
@@ -46,6 +49,7 @@ export function adapter(svcName, aws) {
       )
       .toPromise()
     ,
+    */
     // post job
     post: ({}),
     // get jobs
