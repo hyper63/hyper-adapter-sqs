@@ -6,11 +6,12 @@ import createBucket from './lib/s3/create-bucket.js'
 import createQueue from './lib/sqs/create-queue.js'
 import getObject from './lib/s3/get-object.js'
 import putObject from './lib/s3/put-object.js'
-*/
-/*
 import deleteObject from './lib/s3/delete-object.js'
 import deleteQueue from './lib/sqs/delete-queue.js'
 import deleteBucket from './lib/s3/delete-bucket.js'
+import getQueueUrl from './lib/sqs/get-queue-url.js'
+
+
 import sendMessage from './lib/sqs/send-message.js'
 import receiveMessage from './lib/sqs/receive-message.js'
 import deleteMessage from './lib/sqs/delete-message.js'
@@ -21,10 +22,9 @@ import { adapter } from './adapter.js'
 const test = Deno.test
 /*
 const aws = {
-  createBucket, createQueue, getObject, putObject
-  deleteObject,
-  deleteQueue, deleteBucket, sendMessage, receiveMessage, deleteMessage
-  
+  createBucket, createQueue, getObject, putObject,
+  deleteObject, deleteQueue, deleteBucket, getQueueUrl
+  //, sendMessage, receiveMessage, deleteMessage
 }
 */
 
@@ -36,5 +36,19 @@ test('create queue', async () => {
     target: 'https://example.com',
     secret: 'secret'
   })
+  console.log(result)
   assertEquals(result.ok, true)
+
+  // tear down
+  const cleanup = await a.delete('baz')
+  console.log(cleanup)
 })
+
+/*
+test('delete queue', async () => {
+  // setup
+
+  // tear down
+
+})
+*/

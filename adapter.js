@@ -1,7 +1,7 @@
 import { crocks, R } from './deps.js'
 
 const { Async } = crocks
-const { assoc, identity, pluck } = R
+const { all, assoc, dissoc, equals, identity, keys, pluck } = R
 
 const noop = () => null
 
@@ -9,12 +9,16 @@ export function adapter(svcName, aws) {
   const createBucket = Async.fromPromise(aws.createBucket)
   const createQueue = Async.fromPromise(aws.createQueue)
   const getObject = Async.fromPromise(aws.getObject)
-  const putObject = Async.fromPromise(aws.putObject)
-  /*
-  const putObject = Async.fromPromise(aws.putObject)
+  const putObject = R.curry(function (a, b, c) {
+    return Async.fromPromise(aws.putObject)(a, b, c)
+  })
+  const getQueueUrl = Async.fromPromise(aws.getQueueUrl)
   const deleteQueue = Async.fromPromise(aws.deleteQueue)
   const deleteBucket = Async.fromPromise(aws.deleteBucket)
   const deleteObject = Async.fromPromise(aws.deleteObject)
+  /*
+  const putObject = Async.fromPromise(aws.putObject)
+  
   */
   return Object.freeze({
     // list queues 
@@ -34,24 +38,27 @@ export function adapter(svcName, aws) {
           Async.Resolved
         )
         .map(assoc(name, { target, secret }))
-        .chain(queues => putObject(svcName, 'queues', queues))
+        .chain(putObject(svcName, 'queues'))
         .toPromise()
     },
     // delete queue
-    /*
     delete: name => getObject(svcName, 'queues')
       .map(dissoc(name))
       .chain(queues =>
+        // remove parent queue and bucket if no more queues defined
         keys(queues).length === 0
-          ? deleteObject(svcName, 'queues').chain(() => Async.all([
-            deleteQueue(svcName),
-            deleteBucket(svcName)
-          ]))
+          ? deleteObject(svcName, 'queues')
+            .chain(() => Async.all([
+              getQueueUrl(svcName).chain(deleteQueue),
+              deleteBucket(svcName)
+            ]))
+            .map(results =>
+              ({ ok: all(equals(true), pluck('ok', results)) })
+            )
           : putObject(svcName, 'queues', queues)
       )
       .toPromise()
     ,
-    */
     // post job
     post: ({}),
     // get jobs
