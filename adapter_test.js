@@ -28,6 +28,7 @@ test("post a job to queue", async () => {
     name: "test",
     target: "https://jsonplaceholder.typicode.com/posts",
   });
+  //console.log('x', x)
   // post job
   const result = await a.post({ name: "test", job: { hello: "world" } });
   assertEquals(result.ok, true);

@@ -21,7 +21,7 @@ the following information:
 
 ## ENV VARS
 
-``` txt
+```txt
 AWS_ACCESS_KEY_ID=XXXXX
 AWS_SECRET_ACCESS_KEY=XXXX
 AWS_REGION=XXXXX
@@ -29,8 +29,9 @@ AWS_REGION=XXXXX
 
 Then when you configure the hyper service, you can setup the sqs adapter like:
 
-> The unique name is an alphanumeric string that contains identifing information, this will enable you
-> to identify the bucket and queue which will be prefixed by 'hyper-queue-' and whatever name you provide.
+> The unique name is an alphanumeric string that contains identifing
+> information, this will enable you to identify the bucket and queue which will
+> be prefixed by 'hyper-queue-' and whatever name you provide.
 
 hyper.config.js
 
@@ -40,7 +41,7 @@ import { default as sqs } from "https://deno.land/x/hyper-sqs-adapter@1.0.0/mod.
 export default {
   app: opine,
   adapter: [
-    { port: "queue", plugins: [sqs('UNIQUE_NAME')] },
+    { port: "queue", plugins: [sqs("UNIQUE_NAME")] },
   ],
 };
 ```

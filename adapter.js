@@ -1,7 +1,18 @@
 import { crocks, R } from "./deps.js";
 
 const { Async } = crocks;
-const { all, assoc, dissoc, equals, identity, keys, map, pluck, prop } = R;
+const {
+  all,
+  assoc,
+  compose,
+  dissoc,
+  equals,
+  identity,
+  keys,
+  map,
+  pluck,
+  prop,
+} = R;
 
 const noop = () => Promise.resolve({ ok: false, msg: "Not Implemented" });
 
@@ -37,12 +48,14 @@ export function adapter(svcName, aws) {
         ), 10 * 1000);
   }
 
+
   return Object.freeze({
     // list queues
-    index: getObject(svcName, "queues").map(keys).toPromise(),
+    index: () => getObject(svcName, "queues").map(keys).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
       return Async.of(svcName)
+
         .chain((svcName) =>
           Async.all([
             createBucket(svcName),
@@ -50,12 +63,11 @@ export function adapter(svcName, aws) {
           ])
         )
         .chain(() => getObject(svcName, "queues"))
-        .bichain(
-          (err) =>
-            err.message.includes("NoSuchKey")
-              ? putObject(svcName, "queues", {}).map(() => ({}))
-              : Async.Rejected(err),
-          Async.Resolved,
+        .bichain((err) =>
+          err.message.includes("NoSuchKey")
+            ? putObject(svcName, "queues", {}).map(() => ({}))
+            : Async.Rejected(err),
+          Async.Resolved
         )
         .map(assoc(name, { target, secret }))
         .chain(putObject(svcName, "queues"))
@@ -90,7 +102,16 @@ export function adapter(svcName, aws) {
         .chain((msg) =>
           getQueueUrl(svcName)
             .chain((url) => sendMessage(url, msg))
-            .map(({ MessageId }) => ({ ok: true, id: MessageId }))
+            .map(({ MessageId }) => ({
+              ok: true,
+              id: MessageId,
+              msg: assoc("status", "ready", msg),
+            }))
+        )
+        .chain((result) =>
+          putObject(svcName, `${name}/${result.id}`, result.msg).map(() =>
+            result
+          )
         )
         .toPromise(),
     // get jobs
@@ -101,8 +122,14 @@ export function adapter(svcName, aws) {
     cancel: noop,
   });
 
+  const setToErrorState = (txt, msg) =>
+    compose(
+      assoc("status", "ERROR"),
+      assoc("error", txt),
+    )(msg);
+
   function postMessages(svcName) {
-    return ({ Body, ReceiptHandle }) =>
+    return ({ MessageId, Body, ReceiptHandle }) =>
       Async.of(Body)
         .map((msg) => JSON.parse(msg))
         // send to target
@@ -114,6 +141,18 @@ export function adapter(svcName, aws) {
             },
             body: JSON.stringify(job),
           })
+            .chain((res) => {
+              const msg = JSON.parse(Body);
+              return res.ok
+                ? deleteObject(svcName, `${msg.queue}/${MessageId}`)
+                : Async.fromPromise(res.text)().chain((txt) =>
+                  putObject(
+                    svcName,
+                    `${msg.queue}/${MessageId}`,
+                    setToErrorState(txt, msg),
+                  )
+                );
+            })
         )
         // delete from queue
         .chain(() =>
