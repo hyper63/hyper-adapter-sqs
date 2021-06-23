@@ -37,12 +37,21 @@ export function adapter(svcName, aws) {
     Listen for queue messages every 10 seconds
   */
   if (Deno.env.get("DENO_ENV") !== "test") {
-    setInterval(() =>
-      processTasks(svcName, asyncFetch, aws)
-        .fork(
-          (e) => console.log("error processing jobs: ", e.message),
-          (r) => console.log("processed jobs: ", r),
-        ), 10 * 1000);
+    setInterval(
+      () =>
+        processTasks(svcName, asyncFetch, {
+          getQueueUrl,
+          receiveMessage,
+          deleteMessage,
+          putObject,
+          deleteObject,
+        })
+          .fork(
+            (e) => console.log("error processing jobs: ", e.message),
+            (r) => console.log("processed jobs: ", r),
+          ),
+      10 * 1000,
+    );
   }
 
   return Object.freeze({
