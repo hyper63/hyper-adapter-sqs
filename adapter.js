@@ -38,16 +38,12 @@ export function adapter(svcName, aws) {
   */
   if (Deno.env.get("DENO_ENV") !== "test") {
     setInterval(() =>
-      getQueueUrl(svcName)
-        .chain((url) => receiveMessage(url, 10))
-        // post messages to target
-        .chain((msgs) => Async.all(map(postMessages(svcName), msgs)))
+      processTasks(svcName, asyncFetch, aws)
         .fork(
-          (e) => console.log("error: ", e.message),
-          (r) => console.log("r", r),
+          (e) => console.log("error processing jobs: ", e.message),
+          (r) => console.log("processed jobs: ", r),
         ), 10 * 1000);
   }
-
 
   return Object.freeze({
     // list queues
@@ -55,7 +51,6 @@ export function adapter(svcName, aws) {
     // create queue
     create: ({ name, target, secret }) => {
       return Async.of(svcName)
-
         .chain((svcName) =>
           Async.all([
             createBucket(svcName),
@@ -63,11 +58,12 @@ export function adapter(svcName, aws) {
           ])
         )
         .chain(() => getObject(svcName, "queues"))
-        .bichain((err) =>
-          err.message.includes("NoSuchKey")
-            ? putObject(svcName, "queues", {}).map(() => ({}))
-            : Async.Rejected(err),
-          Async.Resolved
+        .bichain(
+          (err) =>
+            err.message.includes("NoSuchKey")
+              ? putObject(svcName, "queues", {}).map(() => ({}))
+              : Async.Rejected(err),
+          Async.Resolved,
         )
         .map(assoc(name, { target, secret }))
         .chain(putObject(svcName, "queues"))

@@ -36,3 +36,15 @@ test("post a job to queue", async () => {
   // tear down
   await a.delete("test");
 });
+
+test("retrieve a job from the queue", async () => {
+  // TODO
+});
+
+test("get error jobs from the queue", async () => {
+  // TODO
+});
+
+test("retry an errored job from the queue", async () => {
+  // TODO
+});
