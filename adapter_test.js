@@ -37,12 +37,20 @@ test("post a job to queue", async () => {
   await a.delete("test");
 });
 
-test("retrieve a job from the queue", async () => {
-  // TODO
-});
 
 test("get error jobs from the queue", async () => {
-  // TODO
+  // setup
+  await a.create({
+    name: "test2",
+    target: "https://jsonplaceholder.typicode.com/posts"
+  })
+  
+  // test
+  const result = await a.get({name: 'test2', status: 'ERROR'})
+  assertEquals(result.ok, true)
+
+  // tear down
+  await a.delete('test2')
 });
 
 test("retry an errored job from the queue", async () => {

@@ -7,11 +7,13 @@ const {
   compose,
   dissoc,
   equals,
+  filter,
   identity,
   keys,
   map,
   pluck,
   prop,
+  propEq,
 } = R;
 
 const noop = () => Promise.resolve({ ok: false, msg: "Not Implemented" });
@@ -32,7 +34,7 @@ export function adapter(svcName, aws) {
   const receiveMessage = Async.fromPromise(aws.receiveMessage);
   const asyncFetch = Async.fromPromise(fetch);
   const deleteMessage = Async.fromPromise(aws.deleteMessage);
-
+  const listObjects = Async.fromPromise(aws.listObjects)
   /*
     Listen for queue messages every 10 seconds
   */
@@ -110,7 +112,7 @@ export function adapter(svcName, aws) {
             .map(({ MessageId }) => ({
               ok: true,
               id: MessageId,
-              msg: assoc("status", "ready", msg),
+              msg: assoc("status", "READY", msg),
             }))
         )
         .chain((result) =>
@@ -120,49 +122,26 @@ export function adapter(svcName, aws) {
         )
         .toPromise(),
     // get jobs
-    get: noop,
+    get: ({ name, status }) =>
+      listObjects(svcName, name)
+        .chain(includeDocs)
+        .map(filter(propEq('status', status)))
+        .map(jobs => ({ ok: true, jobs, status }))
+        .toPromise()
+    ,
     // retry job
     retry: noop,
     // cancel job
     cancel: noop,
   });
 
-  const setToErrorState = (txt, msg) =>
-    compose(
-      assoc("status", "ERROR"),
-      assoc("error", txt),
-    )(msg);
-
-  function postMessages(svcName) {
-    return ({ MessageId, Body, ReceiptHandle }) =>
-      Async.of(Body)
-        .map((msg) => JSON.parse(msg))
-        // send to target
-        .chain(({ target, secret, job }) =>
-          asyncFetch(target, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-            },
-            body: JSON.stringify(job),
-          })
-            .chain((res) => {
-              const msg = JSON.parse(Body);
-              return res.ok
-                ? deleteObject(svcName, `${msg.queue}/${MessageId}`)
-                : Async.fromPromise(res.text)().chain((txt) =>
-                  putObject(
-                    svcName,
-                    `${msg.queue}/${MessageId}`,
-                    setToErrorState(txt, msg),
-                  )
-                );
-            })
-        )
-        // delete from queue
-        .chain(() =>
-          getQueueUrl(svcName)
-            .chain((url) => deleteMessage(url, ReceiptHandle))
-        );
+  function includeDocs(objs) {
+    return Async.all(
+      map(
+        key => getObject(svcName, key),
+        objs
+      )
+    )
   }
+
 }
