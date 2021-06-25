@@ -1,14 +1,13 @@
 import { crocks, R } from "./deps.js";
+import processTasks from "./process-tasks.js";
 
 const { Async } = crocks;
 const {
   all,
   assoc,
-  compose,
   dissoc,
   equals,
   filter,
-  identity,
   keys,
   map,
   pluck,
@@ -16,7 +15,7 @@ const {
   propEq,
 } = R;
 
-const noop = () => Promise.resolve({ ok: false, msg: "Not Implemented" });
+const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
 
 export function adapter(svcName, aws) {
   // wrap aws functions into Asyncs
@@ -34,7 +33,7 @@ export function adapter(svcName, aws) {
   const receiveMessage = Async.fromPromise(aws.receiveMessage);
   const asyncFetch = Async.fromPromise(fetch);
   const deleteMessage = Async.fromPromise(aws.deleteMessage);
-  const listObjects = Async.fromPromise(aws.listObjects)
+  const listObjects = Async.fromPromise(aws.listObjects);
   /*
     Listen for queue messages every 10 seconds
   */
@@ -58,7 +57,7 @@ export function adapter(svcName, aws) {
 
   return Object.freeze({
     // list queues
-    index: () => getObject(svcName, "queues").map(keys).toPromise(),
+    index: () => getObject(svcName, QUEUES).map(keys).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
       return Async.of(svcName)
@@ -68,26 +67,26 @@ export function adapter(svcName, aws) {
             createQueue(svcName),
           ])
         )
-        .chain(() => getObject(svcName, "queues"))
+        .chain(() => getObject(svcName, QUEUES))
         .bichain(
           (err) =>
             err.message.includes("NoSuchKey")
-              ? putObject(svcName, "queues", {}).map(() => ({}))
+              ? putObject(svcName, QUEUES, {}).map(() => ({}))
               : Async.Rejected(err),
           Async.Resolved,
         )
         .map(assoc(name, { target, secret }))
-        .chain(putObject(svcName, "queues"))
+        .chain(putObject(svcName, QUEUES))
         .toPromise();
     },
     // delete queue
     delete: (name) =>
-      getObject(svcName, "queues")
+      getObject(svcName, QUEUES)
         .map(dissoc(name))
         .chain((queues) =>
           // remove parent queue and bucket if no more queues defined
           keys(queues).length === 0
-            ? deleteObject(svcName, "queues")
+            ? deleteObject(svcName, QUEUES)
               .chain(() =>
                 Async.all([
                   getQueueUrl(svcName).chain(deleteQueue),
@@ -97,51 +96,64 @@ export function adapter(svcName, aws) {
               .map((results) => ({
                 ok: all(equals(true), pluck("ok", results)),
               }))
-            : putObject(svcName, "queues", queues)
+            : putObject(svcName, QUEUES, queues)
         )
         .toPromise(),
     // post job
     post: ({ name, job }) =>
-      getObject(svcName, "queues")
+      getObject(svcName, QUEUES)
         .map(prop(name))
         .map(assoc("queue", name))
         .map(assoc("job", job))
-        .chain((msg) =>
-          getQueueUrl(svcName)
-            .chain((url) => sendMessage(url, msg))
-            .map(({ MessageId }) => ({
-              ok: true,
-              id: MessageId,
-              msg: assoc("status", "READY", msg),
-            }))
-        )
-        .chain((result) =>
-          putObject(svcName, `${name}/${result.id}`, result.msg).map(() =>
-            result
-          )
-        )
+        .chain(postJob(name))
         .toPromise(),
     // get jobs
     get: ({ name, status }) =>
       listObjects(svcName, name)
         .chain(includeDocs)
-        .map(filter(propEq('status', status)))
-        .map(jobs => ({ ok: true, jobs, status }))
-        .toPromise()
-    ,
+        .map(filter(propEq("status", status)))
+        .map((jobs) => ({ ok: true, jobs, status }))
+        .toPromise(),
     // retry job
-    retry: noop,
+    retry: ({ name, id }) =>
+      getObject(svcName, `${name}/${id}`)
+        .chain(({ status, job }) => {
+          if (status === ERROR) {
+            return postJob(name)(job)
+              .chain(() => deleteObject(svcName, `${name}/${id}`))
+              .map(() => ({ ok: true }));
+          }
+          return Async.Resolved({ ok: true });
+        })
+        .toPromise(),
     // cancel job
-    cancel: noop,
+    cancel: ({ name, id }) =>
+      deleteObject(svcName, `${name}/${id}`)
+        .map(() => ({ ok: true }))
+        .toPromise(),
   });
 
-  function includeDocs(objs) {
+  function postJob(queue) {
+    return (msg) =>
+      getQueueUrl(svcName)
+        .chain((url) => sendMessage(url, msg))
+        .map(({ MessageId }) => ({
+          ok: true,
+          id: MessageId,
+          msg: assoc("status", READY, msg),
+        }))
+        .chain((result) =>
+          putObject(svcName, `${queue}/${result.id}`, result.msg).map(() =>
+            result
+          )
+        );
+  }
+  function includeDocs(keys) {
     return Async.all(
       map(
-        key => getObject(svcName, key),
-        objs
-      )
-    )
+        (key) => getObject(svcName, key),
+        keys,
+      ),
+    );
   }
-
 }
