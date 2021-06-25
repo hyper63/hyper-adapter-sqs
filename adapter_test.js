@@ -37,22 +37,47 @@ test("post a job to queue", async () => {
   await a.delete("test");
 });
 
-
 test("get error jobs from the queue", async () => {
   // setup
   await a.create({
     name: "test2",
-    target: "https://jsonplaceholder.typicode.com/posts"
-  })
-  
+    target: "https://jsonplaceholder.typicode.com/posts",
+  });
+
   // test
-  const result = await a.get({name: 'test2', status: 'ERROR'})
-  assertEquals(result.ok, true)
+  const result = await a.get({ name: "test2", status: "ERROR" });
+  assertEquals(result.ok, true);
 
   // tear down
-  await a.delete('test2')
+  await a.delete("test2");
 });
 
 test("retry an errored job from the queue", async () => {
-  // TODO
+  // setup
+  await a.create({
+    name: "test2",
+    target: "https://jsonplaceholder.typicode.com/posts",
+  });
+
+  // test
+  const result = await a.retry({ name: "test2", id: "1" });
+  assertEquals(result.ok, true);
+
+  // tear down
+  await a.delete("test2");
+});
+
+test("cancel errored job from the queue", async () => {
+  // setup
+  await a.create({
+    name: "test2",
+    target: "https://jsonplaceholder.typicode.com/posts",
+  });
+
+  // test
+  const result = await a.cancel({ name: "test2", id: "1" });
+  assertEquals(result.ok, true);
+
+  // tear down
+  await a.delete("test2");
 });

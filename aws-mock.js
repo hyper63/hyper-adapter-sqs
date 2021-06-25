@@ -16,13 +16,13 @@ export function putObject(svc, name, value) {
 }
 
 export function getObject(svc, name) {
-  if (name === 'test2/16613e7e-2331-4c7a-bf37-fe5861f2abe9') {
+  if (name === "test2/16613e7e-2331-4c7a-bf37-fe5861f2abe9") {
     return Promise.resolve({
       target: "https://jsonplaceholder.typicode.com/posts",
       queue: "test2",
       job: { hello: "world" },
-      status: "ERROR"
-    })
+      status: "ERROR",
+    });
   }
   return Promise.resolve(doc);
 }
@@ -58,5 +58,5 @@ export function deleteMessage(url, handle) {
 }
 
 export function listObjects(bucket, folder) {
-  return Promise.resolve(["test2/16613e7e-2331-4c7a-bf37-fe5861f2abe9"])
+  return Promise.resolve(["test2/16613e7e-2331-4c7a-bf37-fe5861f2abe9"]);
 }

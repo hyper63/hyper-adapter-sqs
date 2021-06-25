@@ -34,7 +34,7 @@ export function adapter(svcName, aws) {
   const receiveMessage = Async.fromPromise(aws.receiveMessage);
   const asyncFetch = Async.fromPromise(fetch);
   const deleteMessage = Async.fromPromise(aws.deleteMessage);
-  const listObjects = Async.fromPromise(aws.listObjects)
+  const listObjects = Async.fromPromise(aws.listObjects);
   /*
     Listen for queue messages every 10 seconds
   */
@@ -106,42 +106,50 @@ export function adapter(svcName, aws) {
         .map(prop(name))
         .map(assoc("queue", name))
         .map(assoc("job", job))
-        .chain((msg) =>
-          getQueueUrl(svcName)
-            .chain((url) => sendMessage(url, msg))
-            .map(({ MessageId }) => ({
-              ok: true,
-              id: MessageId,
-              msg: assoc("status", "READY", msg),
-            }))
-        )
-        .chain((result) =>
-          putObject(svcName, `${name}/${result.id}`, result.msg).map(() =>
-            result
-          )
-        )
+        .chain(postJob(name))
         .toPromise(),
     // get jobs
     get: ({ name, status }) =>
       listObjects(svcName, name)
         .chain(includeDocs)
-        .map(filter(propEq('status', status)))
-        .map(jobs => ({ ok: true, jobs, status }))
-        .toPromise()
-    ,
+        .map(filter(propEq("status", status)))
+        .map((jobs) => ({ ok: true, jobs, status }))
+        .toPromise(),
     // retry job
-    retry: noop,
+    retry: ({ name, id }) =>
+      getObject(svcName, `${name}/${id}`)
+        .chain(({ job }) => postJob(name)(job))
+        .chain(() => deleteObject(svcName, `${name}/${id}`))
+        .map(() => ({ ok: true }))
+        .toPromise(),
     // cancel job
-    cancel: noop,
+    cancel: ({ name, id }) =>
+      deleteObject(svcName, `${name}/${id}`)
+        .map(() => ({ ok: true }))
+        .toPromise(),
   });
 
+  function postJob(queue) {
+    return (msg) =>
+      getQueueUrl(svcName)
+        .chain((url) => sendMessage(url, msg))
+        .map(({ MessageId }) => ({
+          ok: true,
+          id: MessageId,
+          msg: assoc("status", "READY", msg),
+        }))
+        .chain((result) =>
+          putObject(svcName, `${queue}/${result.id}`, result.msg).map(() =>
+            result
+          )
+        );
+  }
   function includeDocs(objs) {
     return Async.all(
       map(
-        key => getObject(svcName, key),
-        objs
-      )
-    )
+        (key) => getObject(svcName, key),
+        objs,
+      ),
+    );
   }
-
 }
