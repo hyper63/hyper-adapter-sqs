@@ -1,6 +1,6 @@
 import { crocks, R } from "./deps.js";
 
-const { assoc, compose, map } = R;
+const { __, always, assoc, compose, ifElse, isNil, map } = R;
 const { Async } = crocks;
 
 export default function (
@@ -14,6 +14,15 @@ export default function (
       assoc("error", txt),
     )(msg);
 
+  const headers = {
+    "content-type": "application/json",
+  };
+  const getHeaders = ifElse(
+    isNil,
+    always(headers),
+    assoc("X-CSRF-TOKEN", __, headers),
+  );
+
   function postMessages(svcName) {
     return ({ MessageId, Body, ReceiptHandle }) =>
       Async.of(Body)
@@ -22,9 +31,7 @@ export default function (
         .chain(({ target, secret, job }) =>
           asyncFetch(target, {
             method: "POST",
-            headers: {
-              "content-type": "application/json",
-            },
+            headers: getHeaders(secret),
             body: JSON.stringify(job),
           })
             .chain((res) => {
