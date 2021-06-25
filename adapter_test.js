@@ -24,7 +24,7 @@ test("create/delete queue", async () => {
 
 test("post a job to queue", async () => {
   // setup
-  const x = await a.create({
+  await a.create({
     name: "test",
     target: "https://jsonplaceholder.typicode.com/posts",
   });

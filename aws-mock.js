@@ -1,3 +1,5 @@
+// deno-lint-ignore-file
+
 let doc = {};
 
 export function createQueue(name) {

@@ -1,14 +1,13 @@
 import { crocks, R } from "./deps.js";
+import processTasks from "./process-tasks.js";
 
 const { Async } = crocks;
 const {
   all,
   assoc,
-  compose,
   dissoc,
   equals,
   filter,
-  identity,
   keys,
   map,
   pluck,
@@ -16,7 +15,7 @@ const {
   propEq,
 } = R;
 
-const noop = () => Promise.resolve({ ok: false, msg: "Not Implemented" });
+const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
 
 export function adapter(svcName, aws) {
   // wrap aws functions into Asyncs
@@ -58,7 +57,7 @@ export function adapter(svcName, aws) {
 
   return Object.freeze({
     // list queues
-    index: () => getObject(svcName, "queues").map(keys).toPromise(),
+    index: () => getObject(svcName, QUEUES).map(keys).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
       return Async.of(svcName)
@@ -68,26 +67,26 @@ export function adapter(svcName, aws) {
             createQueue(svcName),
           ])
         )
-        .chain(() => getObject(svcName, "queues"))
+        .chain(() => getObject(svcName, QUEUES))
         .bichain(
           (err) =>
             err.message.includes("NoSuchKey")
-              ? putObject(svcName, "queues", {}).map(() => ({}))
+              ? putObject(svcName, QUEUES, {}).map(() => ({}))
               : Async.Rejected(err),
           Async.Resolved,
         )
         .map(assoc(name, { target, secret }))
-        .chain(putObject(svcName, "queues"))
+        .chain(putObject(svcName, QUEUES))
         .toPromise();
     },
     // delete queue
     delete: (name) =>
-      getObject(svcName, "queues")
+      getObject(svcName, QUEUES)
         .map(dissoc(name))
         .chain((queues) =>
           // remove parent queue and bucket if no more queues defined
           keys(queues).length === 0
-            ? deleteObject(svcName, "queues")
+            ? deleteObject(svcName, QUEUES)
               .chain(() =>
                 Async.all([
                   getQueueUrl(svcName).chain(deleteQueue),
@@ -97,12 +96,12 @@ export function adapter(svcName, aws) {
               .map((results) => ({
                 ok: all(equals(true), pluck("ok", results)),
               }))
-            : putObject(svcName, "queues", queues)
+            : putObject(svcName, QUEUES, queues)
         )
         .toPromise(),
     // post job
     post: ({ name, job }) =>
-      getObject(svcName, "queues")
+      getObject(svcName, QUEUES)
         .map(prop(name))
         .map(assoc("queue", name))
         .map(assoc("job", job))
@@ -118,9 +117,14 @@ export function adapter(svcName, aws) {
     // retry job
     retry: ({ name, id }) =>
       getObject(svcName, `${name}/${id}`)
-        .chain(({ job }) => postJob(name)(job))
-        .chain(() => deleteObject(svcName, `${name}/${id}`))
-        .map(() => ({ ok: true }))
+        .chain(({ status, job }) => {
+          if (status === ERROR) {
+            return postJob(name)(job)
+              .chain(() => deleteObject(svcName, `${name}/${id}`))
+              .map(() => ({ ok: true }));
+          }
+          return Async.Resolved({ ok: true });
+        })
         .toPromise(),
     // cancel job
     cancel: ({ name, id }) =>
@@ -136,7 +140,7 @@ export function adapter(svcName, aws) {
         .map(({ MessageId }) => ({
           ok: true,
           id: MessageId,
-          msg: assoc("status", "READY", msg),
+          msg: assoc("status", READY, msg),
         }))
         .chain((result) =>
           putObject(svcName, `${queue}/${result.id}`, result.msg).map(() =>
@@ -144,11 +148,11 @@ export function adapter(svcName, aws) {
           )
         );
   }
-  function includeDocs(objs) {
+  function includeDocs(keys) {
     return Async.all(
       map(
         (key) => getObject(svcName, key),
-        objs,
+        keys,
       ),
     );
   }
