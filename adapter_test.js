@@ -1,13 +1,13 @@
 import "https://deno.land/x/dotenv@v2.0.0/load.ts";
 
-import * as aws from "./aws-mock.js";
-//import * as aws from './aws.js'
+import aws from "./aws-mock.js";
+//import aws from './aws.js'
 
 import { assertEquals } from "./deps_dev.js";
 import { adapter } from "./adapter.js";
 
 const test = Deno.test;
-const a = adapter("foobar", aws);
+const a = adapter({ name: "foobar", aws });
 
 test("create/delete queue", async () => {
   const result = await a.create({

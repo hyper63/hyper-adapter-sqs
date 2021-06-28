@@ -17,23 +17,24 @@ const {
 
 const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
 
-export function adapter(svcName, aws) {
+export function adapter({ name, aws: { s3, sqs } }) {
+  const svcName = name;
   // wrap aws functions into Asyncs
-  const createBucket = Async.fromPromise(aws.createBucket);
-  const createQueue = Async.fromPromise(aws.createQueue);
-  const getObject = Async.fromPromise(aws.getObject);
+  const createBucket = Async.fromPromise(s3.createBucket);
+  const createQueue = Async.fromPromise(sqs.createQueue);
+  const getObject = Async.fromPromise(s3.getObject);
   const putObject = R.curry(function (a, b, c) {
-    return Async.fromPromise(aws.putObject)(a, b, c);
+    return Async.fromPromise(s3.putObject)(a, b, c);
   });
-  const getQueueUrl = Async.fromPromise(aws.getQueueUrl);
-  const deleteQueue = Async.fromPromise(aws.deleteQueue);
-  const deleteBucket = Async.fromPromise(aws.deleteBucket);
-  const deleteObject = Async.fromPromise(aws.deleteObject);
-  const sendMessage = Async.fromPromise(aws.sendMessage);
-  const receiveMessage = Async.fromPromise(aws.receiveMessage);
+  const getQueueUrl = Async.fromPromise(sqs.getQueueUrl);
+  const deleteQueue = Async.fromPromise(sqs.deleteQueue);
+  const deleteBucket = Async.fromPromise(s3.deleteBucket);
+  const deleteObject = Async.fromPromise(s3.deleteObject);
+  const sendMessage = Async.fromPromise(sqs.sendMessage);
+  const receiveMessage = Async.fromPromise(sqs.receiveMessage);
   const asyncFetch = Async.fromPromise(fetch);
-  const deleteMessage = Async.fromPromise(aws.deleteMessage);
-  const listObjects = Async.fromPromise(aws.listObjects);
+  const deleteMessage = Async.fromPromise(sqs.deleteMessage);
+  const listObjects = Async.fromPromise(s3.listObjects);
   /*
     Listen for queue messages every 10 seconds
   */
@@ -60,13 +61,10 @@ export function adapter(svcName, aws) {
     index: () => getObject(svcName, QUEUES).map(keys).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
-      return Async.of(svcName)
-        .chain((svcName) =>
-          Async.all([
-            createBucket(svcName),
-            createQueue(svcName),
-          ])
-        )
+      return Async.all([
+        createBucket(svcName),
+        createQueue(svcName),
+      ])
         .chain(() => getObject(svcName, QUEUES))
         .bichain(
           (err) =>
