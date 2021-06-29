@@ -55,6 +55,7 @@ export default function (
   }
 
   return getQueueUrl(svcName)
+    .bimap(() => ({ message: "Queues not found." }), (r) => r)
     .chain((url) => receiveMessage(url, 10))
     // post messages to target
     .chain((msgs) => Async.all(map(postMessages(svcName), msgs)));
