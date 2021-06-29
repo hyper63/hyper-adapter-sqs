@@ -1,12 +1,14 @@
 import { ApiFactory, crocks, R } from "./deps.js";
 
 import { adapter } from "./adapter.js";
-import * as aws from "./aws.js";
+import aws from "./aws.js";
 
-const [ID, PORT] = ["sqs", "queue"];
+const ID = "sqs";
 const { Either } = crocks;
 const { Left, Right } = Either;
 const { __, assoc, identity, isNil, lensProp, over } = R;
+
+export const PORT = "queue"
 
 /**
  * @param {string} svcName - name of queue service
@@ -16,7 +18,9 @@ export default function sqsAdapter(svcName, options = {}) {
   const setName = assoc("name", __, {});
   const createFactory = over(
     lensProp("factory"),
-    () => new ApiFactory({ credentials: options }),
+    () => (options.awsAccessKeyId && options.awsSecretKey && options.region)
+      ? new ApiFactory({ credentials: options })
+      : new ApiFactory(),
   );
   const loadAws = (env) =>
     over(lensProp("aws"), () => aws.runWith(env.factory), env);
@@ -25,15 +29,17 @@ export default function sqsAdapter(svcName, options = {}) {
     id: ID,
     port: PORT,
     load: () =>
-      notIsNull(svcName)
+      //notIsNull(svcName)
+      Right(svcName)
         .map(setName)
         .map(createFactory)
         .map(loadAws)
-        .map((tap) => (console.log(tap), tap)) // print out current state
+        .map((tap) => (console.log('data', tap), tap)) // print out current state
         .either(
           (e) => (console.log("ERROR: In Load Method", e.message), e),
           identity,
-        ),
+        )
+    ,
     link: (env) => () => adapter(env), // env: {name, aws: {s3, sqs}, factory}
   });
 }

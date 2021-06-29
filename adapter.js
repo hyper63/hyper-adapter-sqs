@@ -104,6 +104,8 @@ export function adapter({ name, aws: { s3, sqs } }) {
         .map(assoc("queue", name))
         .map(assoc("job", job))
         .chain(postJob(name))
+        //.map(result => (console.log('result: ', result), result))
+        .map(() => ({ ok: true }))
         .toPromise(),
     // get jobs
     get: ({ name, status }) =>

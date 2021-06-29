@@ -46,12 +46,29 @@ export default {
 };
 ```
 
+> NOTE: You can explictly pass in AwsAccessKeyId, AwsSecretKey, region as options in the adapter method.
+> `sqs(UNIQUE_NAME, { awsAccessKeyId, awsSecretKey, region: 'us-east-1'})`
+
 ## Example
 
-TODO
+create queue
+
+``` sh
+curl -X PUT -H 'Content-Type: application/json' -d '{"target": "url"}' cloud.hyper.io/queue/hooks
+```
+
+post queue
+
+``` sh
+curl -X POST -H 'Content-Type: application/json' -d '{...}' cloud.hyper.io/queue/hooks
+```
 
 ## Testing
 
 ```
 ./scripts/test.sh
 ```
+
+## License
+
+Apache License 2.0 SEE [LICENSE](LICENSE)
