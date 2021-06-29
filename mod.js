@@ -6,7 +6,7 @@ import aws from "./aws.js";
 const ID = "sqs";
 const { Either } = crocks;
 const { Left, Right } = Either;
-const { __, assoc, identity, isNil, lensProp, over } = R;
+const { __, assoc, identity, isNil, lensProp, merge, over } = R;
 
 export const PORT = "queue";
 
@@ -19,8 +19,8 @@ export default function sqsAdapter(svcName, options = {}) {
   const createFactory = over(
     lensProp("factory"),
     () =>
-      (options.awsAccessKeyId && options.awsSecretKey && options.region)
-        ? new ApiFactory({ credentials: options })
+      (options.awsAccessKeyId && options.awsSecretKey)
+        ? new ApiFactory({ credentials: merge({ region: 'us-east-1' }, options) })
         : new ApiFactory(),
   );
   const loadAws = (env) =>
