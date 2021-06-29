@@ -8,7 +8,7 @@ const { Either } = crocks;
 const { Left, Right } = Either;
 const { __, assoc, identity, isNil, lensProp, over } = R;
 
-export const PORT = "queue"
+export const PORT = "queue";
 
 /**
  * @param {string} svcName - name of queue service
@@ -18,9 +18,10 @@ export default function sqsAdapter(svcName, options = {}) {
   const setName = assoc("name", __, {});
   const createFactory = over(
     lensProp("factory"),
-    () => (options.awsAccessKeyId && options.awsSecretKey && options.region)
-      ? new ApiFactory({ credentials: options })
-      : new ApiFactory(),
+    () =>
+      (options.awsAccessKeyId && options.awsSecretKey && options.region)
+        ? new ApiFactory({ credentials: options })
+        : new ApiFactory(),
   );
   const loadAws = (env) =>
     over(lensProp("aws"), () => aws.runWith(env.factory), env);
@@ -29,21 +30,21 @@ export default function sqsAdapter(svcName, options = {}) {
     id: ID,
     port: PORT,
     load: () =>
-      //notIsNull(svcName)
-      Right(svcName)
+      notIsNull(svcName)
         .map(setName)
         .map(createFactory)
         .map(loadAws)
-        .map((tap) => (console.log('data', tap), tap)) // print out current state
+        .map((tap) => (console.log("data", tap), tap)) // print out current state
         .either(
           (e) => (console.log("ERROR: In Load Method", e.message), e),
           identity,
-        )
-    ,
+        ),
     link: (env) => () => adapter(env), // env: {name, aws: {s3, sqs}, factory}
   });
 }
 
 function notIsNull(s) {
-  isNil(s) ? Left({ message: "SQS Service Name: can not be null!" }) : Right(s);
+  return isNil(s)
+    ? Left({ message: "SQS Service Name: can not be null!" })
+    : Right(s);
 }
