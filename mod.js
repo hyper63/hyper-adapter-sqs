@@ -20,7 +20,9 @@ export default function sqsAdapter(svcName, options = {}) {
     lensProp("factory"),
     () =>
       (options.awsAccessKeyId && options.awsSecretKey)
-        ? new ApiFactory({ credentials: merge({ region: 'us-east-1' }, options) })
+        ? new ApiFactory({
+          credentials: merge({ region: "us-east-1" }, options),
+        })
         : new ApiFactory(),
   );
   const loadAws = (env) =>
