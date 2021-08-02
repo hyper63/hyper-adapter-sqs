@@ -5,8 +5,18 @@ import aws from "./aws.js";
 
 const ID = "sqs";
 const { Either } = crocks;
-const { Left, Right } = Either;
-const { __, assoc, identity, isNil, lensProp, merge, over } = R;
+const { Left, Right, of } = Either;
+const {
+  __,
+  assoc,
+  reject,
+  identity,
+  isNil,
+  lensProp,
+  mergeRight,
+  over,
+  defaultTo,
+} = R;
 
 export const PORT = "queue";
 
@@ -15,28 +25,52 @@ export const PORT = "queue";
  * @param {object} [options] - optional set of config options for adapter
  */
 export default function sqsAdapter(svcName, options = {}) {
-  const setName = assoc("name", __, {});
-  const createFactory = over(
-    lensProp("factory"),
-    () =>
-      (options.awsAccessKeyId && options.awsSecretKey)
-        ? new ApiFactory({
-          credentials: merge({ region: "us-east-1" }, options),
-        })
-        : new ApiFactory(),
-  );
+  const setNameOn = (obj) => assoc("name", __, obj);
+  const setAwsCreds = (env) =>
+    mergeRight(
+      env,
+      reject(isNil, options),
+    );
+  const setAwsRegion = (env) =>
+    mergeRight(
+      { region: "us-east-1" },
+      env,
+    );
+  const createFactory = (env) =>
+    over(
+      lensProp("factory"),
+      () => {
+        return (env.awsAccessKeyId && env.awsSecretKey)
+          ? new ApiFactory({ credentials: env })
+          : new ApiFactory();
+      },
+      env,
+    );
   const loadAws = (env) =>
     over(lensProp("aws"), () => aws.runWith(env.factory), env);
 
   return Object.freeze({
     id: ID,
     port: PORT,
-    load: () =>
-      notIsNull(svcName)
-        .map(setName)
+    load: (prevLoad) =>
+      of(prevLoad)
+        .map(defaultTo({}))
+        .chain((env) =>
+          notIsNull(svcName)
+            .map(setNameOn(env))
+        )
+        .map(setAwsCreds)
+        .map(setAwsRegion)
         .map(createFactory)
         .map(loadAws)
-        .map((tap) => (console.log("data", tap), tap)) // print out current state
+        .map((
+          tap,
+        ) => (console.log(
+          "data",
+          redact(["awsAccessKeyId", "awsSecretKey"], { ...tap }),
+        ),
+          tap)
+        ) // print out current state
         .either(
           (e) => (console.log("ERROR: In Load Method", e.message), e),
           identity,
@@ -49,4 +83,14 @@ function notIsNull(s) {
   return isNil(s)
     ? Left({ message: "SQS Service Name: can not be null!" })
     : Right(s);
+}
+
+function redact(keys, obj) {
+  keys.forEach(
+    (key) => {
+      obj[key] = "****";
+    },
+  );
+
+  return obj;
 }
