@@ -1,5 +1,5 @@
 // deno-lint-ignore-file
-import "https://deno.land/x/dotenv@v2.0.0/load.ts";
+import "https://deno.land/x/dotenv@v3.1.0/load.ts";
 import { crocks, R } from "./deps.js";
 import { assertEquals } from "./deps_dev.js";
 

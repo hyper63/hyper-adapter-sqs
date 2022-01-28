@@ -1,4 +1,4 @@
-import { ApiFactory, crocks, R } from "./deps.js";
+import { ApiFactory, AwsEndpointResolver, crocks, R } from "./deps.js";
 
 import { adapter } from "./adapter.js";
 import aws from "./aws.js";
@@ -41,8 +41,25 @@ export default function sqsAdapter(svcName, options = {}) {
       lensProp("factory"),
       () => {
         return (env.awsAccessKeyId && env.awsSecretKey)
-          ? new ApiFactory({ credentials: env })
-          : new ApiFactory();
+          /**
+           * Disable using Dualstack endpoints, so this adapter will use VPC Gateway endpoint when used within a VPC
+           * - For lib api, see https://github.com/cloudydeno/deno-aws_api/blob/3afef9fe3aaef842fd3a19245593494c3705a1dd/lib/client/endpoints.ts#L19
+           * - For Dualstack description https://docs.aws.amazon.com/AmazonS3/latest/userguide/dual-stack-endpoints.html#dual-stack-endpoints-description
+           */
+          ? new ApiFactory({
+            credentials: env,
+            endpointResolver: new AwsEndpointResolver({ useDualstack: false }),
+          })
+          : /**
+           * ApiFactory attempts to pull credentials from multiple environment places
+           * If not provided via constructor
+           * See https://github.com/cloudydeno/deno-aws_api/blob/2b8605516802c1b790a2b112c03b790feb3bf58f/lib/client/credentials.ts#L50
+           */
+            new ApiFactory({
+              endpointResolver: new AwsEndpointResolver({
+                useDualstack: false,
+              }),
+            });
       },
       env,
     );
