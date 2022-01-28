@@ -1,6 +1,7 @@
 import { crocks, R } from "./deps.js";
+import { computeSignature } from "./lib/utils.js";
 
-const { __, always, assoc, compose, ifElse, isNil, map } = R;
+const { always, assoc, compose, ifElse, isNil, map } = R;
 const { Async } = crocks;
 
 export default function (
@@ -17,11 +18,20 @@ export default function (
   const headers = {
     "content-type": "application/json",
   };
-  const getHeaders = ifElse(
-    isNil,
-    always(headers),
-    assoc("X-CSRF-TOKEN", __, headers),
-  );
+  const getHeaders = (secret, job) =>
+    ifElse(
+      isNil,
+      always(headers),
+      () => {
+        const timeInMilli = new Date().getTime().toString();
+
+        return assoc(
+          "X-HYPER-SIGNATURE",
+          `t=${timeInMilli},sig=${computeSignature(secret, job, timeInMilli)}`,
+          headers,
+        );
+      },
+    )(secret);
 
   function postMessages(svcName) {
     return ({ MessageId, Body, ReceiptHandle }) =>
@@ -31,7 +41,7 @@ export default function (
         .chain(({ target, secret, job }) =>
           asyncFetch(target, {
             method: "POST",
-            headers: getHeaders(secret),
+            headers: getHeaders(secret, job),
             body: JSON.stringify(job),
           })
             .chain((res) => {
