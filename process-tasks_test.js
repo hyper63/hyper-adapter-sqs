@@ -33,7 +33,7 @@ test("receive messages", async () => {
     assertEquals(JSON.parse(options.body).hello, "world");
 
     // no signature because no secret provided
-    assert(!options.headers["X_HYPER_SIGNATURE"]);
+    assert(!options.headers["X-HYPER-SIGNATURE"]);
 
     return Async.Resolved({ ok: true });
   };
