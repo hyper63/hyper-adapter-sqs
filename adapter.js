@@ -1,4 +1,5 @@
 import { crocks, R } from "./deps.js";
+import { toHyperErr } from "./lib/utils.js";
 import processTasks from "./process-tasks.js";
 
 const { Async } = crocks;
@@ -8,6 +9,7 @@ const {
   dissoc,
   equals,
   filter,
+  identity,
   keys,
   map,
   pluck,
@@ -58,7 +60,11 @@ export function adapter({ name, aws: { s3, sqs } }) {
 
   return Object.freeze({
     // list queues
-    index: () => getObject(svcName, QUEUES).map(keys).toPromise(),
+    index: () =>
+      getObject(svcName, QUEUES).map(keys).bimap(
+        toHyperErr,
+        identity,
+      ).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
       return Async.all([
@@ -75,6 +81,10 @@ export function adapter({ name, aws: { s3, sqs } }) {
         )
         .map(assoc(name, { target, secret }))
         .chain(putObject(svcName, QUEUES))
+        .bimap(
+          toHyperErr,
+          identity,
+        )
         .toPromise();
     },
     // delete queue
@@ -94,7 +104,11 @@ export function adapter({ name, aws: { s3, sqs } }) {
               .map((results) => ({
                 ok: all(equals(true), pluck("ok", results)),
               }))
-            : putObject(svcName, QUEUES, queues)
+            : putObject(svcName, QUEUES, queues).map(() => ({ ok: true }))
+        )
+        .bimap(
+          toHyperErr,
+          identity,
         )
         .toPromise(),
     // post job
@@ -106,6 +120,10 @@ export function adapter({ name, aws: { s3, sqs } }) {
         .chain(postJob(name))
         //.map(result => (console.log('result: ', result), result))
         .map(() => ({ ok: true }))
+        .bimap(
+          toHyperErr,
+          identity,
+        )
         .toPromise(),
     // get jobs
     get: ({ name, status }) =>
@@ -113,6 +131,10 @@ export function adapter({ name, aws: { s3, sqs } }) {
         .chain(includeDocs)
         .map(filter(propEq("status", status)))
         .map((jobs) => ({ ok: true, jobs, status }))
+        .bimap(
+          toHyperErr,
+          identity,
+        )
         .toPromise(),
     // retry job
     retry: ({ name, id }) =>
@@ -125,11 +147,19 @@ export function adapter({ name, aws: { s3, sqs } }) {
           }
           return Async.Resolved({ ok: true });
         })
+        .bimap(
+          toHyperErr,
+          identity,
+        )
         .toPromise(),
     // cancel job
     cancel: ({ name, id }) =>
       deleteObject(svcName, `${name}/${id}`)
         .map(() => ({ ok: true }))
+        .bimap(
+          toHyperErr,
+          identity,
+        )
         .toPromise(),
   });
 
