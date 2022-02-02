@@ -130,7 +130,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
       listObjects(svcName, name)
         .chain(includeDocs)
         .map(filter(propEq("status", status)))
-        .map((jobs) => ({ ok: true, jobs, status }))
+        .map((jobs) => ({ ok: true, jobs }))
         .bimap(
           toHyperErr,
           identity,
