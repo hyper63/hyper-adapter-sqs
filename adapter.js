@@ -104,7 +104,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
               .map((results) => ({
                 ok: all(equals(true), pluck("ok", results)),
               }))
-            : putObject(svcName, QUEUES, queues)
+            : putObject(svcName, QUEUES, queues).map(() => ({ ok: true }))
         )
         .bimap(
           toHyperErr,

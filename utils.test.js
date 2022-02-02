@@ -47,6 +47,7 @@ test("mapStatus - should not set status", () => {
 test("toHyperErr - should return a hyper error shape", () => {
   const err = toHyperErr({ message: "foo", status: 200, extra: "field" });
 
+  assertEquals(err.ok, false);
   assertEquals(err.msg, "foo");
   assertEquals(err.status, 200);
   assertEquals(err.extra, "field");
