@@ -40,8 +40,9 @@ export function adapter({ name, aws: { s3, sqs } }) {
   /*
     Listen for queue messages every 10 seconds
   */
+  let interval
   if (Deno.env.get("DENO_ENV") !== "test") {
-    setInterval(
+    interval = setInterval(
       () =>
         processTasks(svcName, asyncFetch, {
           getQueueUrl,
@@ -59,6 +60,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
   }
 
   return Object.freeze({
+    cleanup: () => interval && clearInterval(interval),
     // list queues
     index: () =>
       getObject(svcName, QUEUES).map(keys).bimap(
