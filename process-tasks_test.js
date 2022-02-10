@@ -11,13 +11,13 @@ const { s3, sqs } = aws;
 const { Async } = crocks;
 const test = Deno.test;
 
-const putObject = R.curry(function (a, b, c) {
-  return Async.fromPromise(s3.putObject)(a, b, c);
-});
 const getQueueUrl = Async.fromPromise(sqs.getQueueUrl);
 const deleteObject = Async.fromPromise(s3.deleteObject);
 const deleteMessage = Async.fromPromise(sqs.deleteMessage);
 
+let putObject = R.curry(function (a, b, c) {
+  return Async.fromPromise(s3.putObject)(a, b, c);
+});
 let asyncFetch;
 let receiveMessage = (url, count) =>
   Async.Resolved([{
@@ -47,6 +47,32 @@ test("receive messages", async () => {
   })
     .toPromise();
   assertEquals(result[0].ok, true);
+});
+
+test("failed to send to worker", async () => {
+  asyncFetch = () => {
+    return Async.Rejected(new Error("woops"));
+  };
+
+  const original = putObject;
+  putObject = R.curry(function (a, b, c) {
+    assertEquals(c.status, "ERROR");
+    assert(c.error);
+    return Async.fromPromise(s3.putObject)(a, b, c);
+  });
+
+  const result = await processTasks("foobar", asyncFetch, {
+    getQueueUrl,
+    receiveMessage,
+    deleteMessage,
+    putObject,
+    deleteObject,
+  })
+    .toPromise();
+  assertEquals(result[0].ok, true);
+
+  // Cleanup
+  putObject = original;
 });
 
 test("computes a signature", async () => {

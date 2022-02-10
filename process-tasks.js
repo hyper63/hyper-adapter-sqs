@@ -44,20 +44,37 @@ export default function (
             headers: getHeaders(secret, job),
             body: JSON.stringify(job),
           })
-            .chain((res) => {
-              const msg = JSON.parse(Body);
-              return res.ok
-                ? deleteObject(svcName, `${msg.queue}/${MessageId}`)
-                : Async.fromPromise(res.text)().chain((txt) =>
-                  putObject(
-                    svcName,
-                    `${msg.queue}/${MessageId}`,
-                    setToErrorState(txt, msg),
-                  )
-                );
-            })
+            .bichain(
+              // Error
+              (err) => {
+                const msg = JSON.parse(Body);
+                return Async.of(
+                  JSON.stringify({ msg: err.message, stack: err.stack }),
+                )
+                  .chain((txt) =>
+                    putObject(
+                      svcName,
+                      `${msg.queue}/${MessageId}`,
+                      setToErrorState(txt, msg),
+                    )
+                  );
+              },
+              // Response
+              (res) => {
+                const msg = JSON.parse(Body);
+                return res.ok
+                  ? deleteObject(svcName, `${msg.queue}/${MessageId}`)
+                  : Async.fromPromise(res.text)().chain((txt) =>
+                    putObject(
+                      svcName,
+                      `${msg.queue}/${MessageId}`,
+                      setToErrorState(txt, msg),
+                    )
+                  );
+              },
+            )
         )
-        // delete from queue
+        // delete from sqs queue
         .chain(() =>
           getQueueUrl(svcName)
             .chain((url) => deleteMessage(url, ReceiptHandle))
