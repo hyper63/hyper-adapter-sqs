@@ -40,7 +40,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
   /*
     Listen for queue messages every 10 seconds
   */
-  let interval
+  let interval;
   if (Deno.env.get("DENO_ENV") !== "test") {
     interval = setInterval(
       () =>
