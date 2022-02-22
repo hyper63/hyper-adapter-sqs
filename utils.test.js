@@ -1,54 +1,33 @@
-import { assertEquals } from "./deps_dev.js";
+import { assert, assertEquals, assertThrows } from "./deps_dev.js";
 
-import { mapErr, mapStatus, toHyperErr } from "./lib/utils.js";
+import { HyperErr } from "./lib/utils.js";
 
 const { test } = Deno;
 
-test("mapErr - should return the string", () => {
-  const res = mapErr("foobar");
+test("HyperErr - should accept nil, string, or object, and throw otherwise", () => {
+  assert(HyperErr());
+  assert(HyperErr({}));
+  assert(HyperErr("foo"));
+  assert(HyperErr({ msg: "foo" }));
 
-  assertEquals(res, "foobar");
+  assertThrows(() => HyperErr({ foo: "bar" }));
+  assertThrows(() => HyperErr([]));
+  assertThrows(() => HyperErr(function () {}));
 });
 
-test("mapErr - should return the error message", () => {
-  const res = mapErr(new Error("foobar"));
+test("HyperErr - should set fields", () => {
+  const base = HyperErr();
+  const withStatus = HyperErr({ status: 404 });
+  const fromStr = HyperErr("foo");
+  const fromObj = HyperErr({ msg: "foo" });
+  const strip = HyperErr({ msg: "foo", omit: "me" });
 
-  assertEquals(res, "foobar");
-});
+  assertEquals(base.ok, false);
 
-test("mapErr - should return the object message", () => {
-  const res = mapErr({ message: "foobar" });
+  assertEquals(withStatus.status, 404);
+  assert(!Object.keys(fromStr).includes("status"));
 
-  assertEquals(res, "foobar");
-});
-
-test("mapErr - should return the stringified thing", () => {
-  const res = mapErr({ foo: "bar" });
-
-  assertEquals(res, JSON.stringify({ foo: "bar" }));
-});
-
-test("mapErr - should return generic message", () => {
-  const res = mapErr(undefined);
-
-  assertEquals(res, "An error occurred");
-});
-
-test("mapStatus - should parse status", () => {
-  assertEquals(mapStatus("200"), 200);
-});
-
-test("mapStatus - should not set status", () => {
-  assertEquals(mapStatus("foo"), undefined);
-  assertEquals(mapStatus(undefined), undefined);
-  assertEquals(mapStatus({}), undefined);
-});
-
-test("toHyperErr - should return a hyper error shape", () => {
-  const err = toHyperErr({ message: "foo", status: 200, extra: "field" });
-
-  assertEquals(err.ok, false);
-  assertEquals(err.msg, "foo");
-  assertEquals(err.status, 200);
-  assertEquals(err.extra, "field");
+  assertEquals(fromStr.msg, "foo");
+  assertEquals(fromObj.msg, "foo");
+  assert(!strip.omit);
 });

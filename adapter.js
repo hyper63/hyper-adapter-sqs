@@ -1,5 +1,5 @@
 import { crocks, R } from "./deps.js";
-import { toHyperErr } from "./lib/utils.js";
+import { handleHyperErr } from "./lib/utils.js";
 import processTasks from "./process-tasks.js";
 
 const { Async } = crocks;
@@ -9,7 +9,6 @@ const {
   dissoc,
   equals,
   filter,
-  identity,
   keys,
   map,
   pluck,
@@ -19,6 +18,10 @@ const {
 
 const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
 
+/**
+ * TODO: handle some errors
+ * TODO: use addEventListener api to emit unhealthy state to core
+ */
 export function adapter({ name, aws: { s3, sqs } }) {
   const svcName = name;
   // wrap aws functions into Asyncs
@@ -42,6 +45,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
   */
   let interval;
   if (Deno.env.get("DENO_ENV") !== "test") {
+    // TODO: emit event when unhealthy, so core can reload this adapter
     interval = setInterval(
       () =>
         processTasks(svcName, asyncFetch, {
@@ -63,9 +67,9 @@ export function adapter({ name, aws: { s3, sqs } }) {
     cleanup: () => interval && clearInterval(interval),
     // list queues
     index: () =>
-      getObject(svcName, QUEUES).map(keys).bimap(
-        toHyperErr,
-        identity,
+      getObject(svcName, QUEUES).map(keys).bichain(
+        handleHyperErr,
+        Async.Resolved,
       ).toPromise(),
     // create queue
     create: ({ name, target, secret }) => {
@@ -83,9 +87,9 @@ export function adapter({ name, aws: { s3, sqs } }) {
         )
         .map(assoc(name, { target, secret }))
         .chain(putObject(svcName, QUEUES))
-        .bimap(
-          toHyperErr,
-          identity,
+        .bichain(
+          handleHyperErr,
+          Async.Resolved,
         )
         .toPromise();
     },
@@ -108,9 +112,9 @@ export function adapter({ name, aws: { s3, sqs } }) {
               }))
             : putObject(svcName, QUEUES, queues)
         )
-        .bimap(
-          toHyperErr,
-          identity,
+        .bichain(
+          handleHyperErr,
+          Async.Resolved,
         )
         .toPromise(),
     // post job
@@ -122,9 +126,9 @@ export function adapter({ name, aws: { s3, sqs } }) {
         .chain(postJob(name))
         //.map(result => (console.log('result: ', result), result))
         .map(() => ({ ok: true }))
-        .bimap(
-          toHyperErr,
-          identity,
+        .bichain(
+          handleHyperErr,
+          Async.Resolved,
         )
         .toPromise(),
     // get jobs
@@ -133,9 +137,9 @@ export function adapter({ name, aws: { s3, sqs } }) {
         .chain(includeDocs)
         .map(filter(propEq("status", status)))
         .map((jobs) => ({ ok: true, jobs }))
-        .bimap(
-          toHyperErr,
-          identity,
+        .bichain(
+          handleHyperErr,
+          Async.Resolved,
         )
         .toPromise(),
     // retry job
@@ -149,18 +153,18 @@ export function adapter({ name, aws: { s3, sqs } }) {
           }
           return Async.Resolved({ ok: true });
         })
-        .bimap(
-          toHyperErr,
-          identity,
+        .bichain(
+          handleHyperErr,
+          Async.Resolved,
         )
         .toPromise(),
     // cancel job
     cancel: ({ name, id }) =>
       deleteObject(svcName, `${name}/${id}`)
         .map(() => ({ ok: true }))
-        .bimap(
-          toHyperErr,
-          identity,
+        .bichain(
+          handleHyperErr,
+          Async.Resolved,
         )
         .toPromise(),
   });
