@@ -1,5 +1,5 @@
-import { crocks, R } from "./deps.js";
-import { computeSignature } from "./lib/utils.js";
+import { crocks, HyperErr, R } from "./deps.js";
+import { computeSignature, isAwsTokenErr } from "./lib/utils.js";
 
 const { always, assoc, compose, ifElse, isNil, map } = R;
 const { Async } = crocks;
@@ -82,7 +82,13 @@ export default function (
   }
 
   return getQueueUrl(svcName)
-    .bimap(() => ({ message: "Queues not found." }), (r) => r)
+    .bimap((err) => {
+      if (isAwsTokenErr(err)) {
+        return HyperErr({ status: 500, msg: "Invalid AWS Credentials" });
+      }
+
+      return { msg: err.message };
+    }, (r) => r)
     .chain((url) => receiveMessage(url, 10))
     // post messages to target
     .chain((msgs) => Async.all(map(postMessages(svcName), msgs)));

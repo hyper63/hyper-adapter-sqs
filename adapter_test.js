@@ -5,9 +5,27 @@ import aws from "./aws-mock.js";
 
 import { assertEquals } from "./deps_dev.js";
 import { adapter } from "./adapter.js";
+import { tokenErrs } from "./lib/utils.js";
 
 const test = Deno.test;
 const a = adapter({ name: "foobar", aws });
+
+test("* - should map AWS Token errors to HyperErr", async () => {
+  const original = aws.s3.getObject;
+
+  await Promise.all(
+    tokenErrs.map(async (te) => {
+      aws.s3.getObject = () => Promise.reject(new Error(`${te} - found`));
+      const a = adapter({ name: "foobar", aws });
+      await a.index().then((res) => {
+        assertEquals(res.ok, false);
+        assertEquals(res.status, 500);
+      });
+    }),
+  );
+
+  aws.s3.getObject = original;
+});
 
 test("create/delete queue", async () => {
   const result = await a.create({

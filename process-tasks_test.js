@@ -49,6 +49,19 @@ test("receive messages", async () => {
   assertEquals(result[0].ok, true);
 });
 
+test("map token error to HyperErr", async () => {
+  const result = await processTasks("foobar", asyncFetch, {
+    getQueueUrl: () => Async.Rejected(new Error("ExpiredToken - found")),
+    receiveMessage,
+    deleteMessage,
+    putObject,
+    deleteObject,
+  })
+    .toPromise().catch((e) => e);
+  assertEquals(result.ok, false);
+  assertEquals(result.status, 500);
+});
+
 test("failed to send to worker", async () => {
   asyncFetch = () => {
     return Async.Rejected(new Error("woops"));
