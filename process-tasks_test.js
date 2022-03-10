@@ -62,30 +62,24 @@ test("map token error to HyperErr", async () => {
   assertEquals(result.status, 500);
 });
 
-test("failed to send to worker", async () => {
+test("failed to send to worker - mark job as error", async () => {
   asyncFetch = () => {
     return Async.Rejected(new Error("woops"));
   };
-
-  const original = putObject;
-  putObject = R.curry(function (a, b, c) {
-    assertEquals(c.status, "ERROR");
-    assert(c.error);
-    return Async.fromPromise(s3.putObject)(a, b, c);
-  });
 
   const result = await processTasks("foobar", asyncFetch, {
     getQueueUrl,
     receiveMessage,
     deleteMessage,
-    putObject,
+    putObject: R.curry(function (a, b, c) {
+      assertEquals(c.status, "ERROR");
+      assert(c.error);
+      return Async.fromPromise(s3.putObject)(a, b, c);
+    }),
     deleteObject,
   })
     .toPromise();
   assertEquals(result[0].ok, true);
-
-  // Cleanup
-  putObject = original;
 });
 
 test("computes a signature", async () => {
