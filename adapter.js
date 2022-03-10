@@ -1,5 +1,5 @@
 import { crocks, R } from "./deps.js";
-import { handleHyperErr } from "./lib/utils.js";
+import { asyncifyMapTokenErrs, handleHyperErr } from "./lib/utils.js";
 import processTasks from "./process-tasks.js";
 
 const { Async } = crocks;
@@ -25,21 +25,22 @@ const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
 export function adapter({ name, aws: { s3, sqs } }) {
   const svcName = name;
   // wrap aws functions into Asyncs
-  const createBucket = Async.fromPromise(s3.createBucket);
-  const createQueue = Async.fromPromise(sqs.createQueue);
-  const getObject = Async.fromPromise(s3.getObject);
+  const createBucket = asyncifyMapTokenErrs(s3.createBucket);
+  const createQueue = asyncifyMapTokenErrs(sqs.createQueue);
+  const getObject = asyncifyMapTokenErrs(s3.getObject);
   const putObject = R.curry(function (a, b, c) {
-    return Async.fromPromise(s3.putObject)(a, b, c);
+    return asyncifyMapTokenErrs(s3.putObject)(a, b, c);
   });
-  const getQueueUrl = Async.fromPromise(sqs.getQueueUrl);
-  const deleteQueue = Async.fromPromise(sqs.deleteQueue);
-  const deleteBucket = Async.fromPromise(s3.deleteBucket);
-  const deleteObject = Async.fromPromise(s3.deleteObject);
-  const sendMessage = Async.fromPromise(sqs.sendMessage);
-  const receiveMessage = Async.fromPromise(sqs.receiveMessage);
+  const getQueueUrl = asyncifyMapTokenErrs(sqs.getQueueUrl);
+  const deleteQueue = asyncifyMapTokenErrs(sqs.deleteQueue);
+  const deleteBucket = asyncifyMapTokenErrs(s3.deleteBucket);
+  const deleteObject = asyncifyMapTokenErrs(s3.deleteObject);
+  const sendMessage = asyncifyMapTokenErrs(sqs.sendMessage);
+  const receiveMessage = asyncifyMapTokenErrs(sqs.receiveMessage);
+  const deleteMessage = asyncifyMapTokenErrs(sqs.deleteMessage);
+  const listObjects = asyncifyMapTokenErrs(s3.listObjects);
   const asyncFetch = Async.fromPromise(fetch);
-  const deleteMessage = Async.fromPromise(sqs.deleteMessage);
-  const listObjects = Async.fromPromise(s3.listObjects);
+
   /*
     Listen for queue messages every 10 seconds
   */
@@ -56,7 +57,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
           deleteObject,
         })
           .fork(
-            (e) => console.log("error processing jobs: ", e.message),
+            (e) => console.log("error processing jobs: ", e.msg || e.message),
             (r) => console.log("processed jobs: ", r),
           ),
       10 * 1000,
