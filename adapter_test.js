@@ -40,6 +40,33 @@ test("create/delete queue", async () => {
   assertEquals(cleanup.ok, true);
 });
 
+test("don't create bucket if it exist", async () => {
+  let createCalled = false;
+  const original = aws.s3.checkBucket;
+  const originalCreateBucket = aws.s3.createBucket;
+  aws.s3.checkBucket = () => Promise.resolve(); // bucket already exists
+  aws.s3.createBucket = (name) => {
+    createCalled = true;
+    return originalCreateBucket(name);
+  };
+
+  const a = adapter({ name: "foobar", aws });
+
+  const result = await a.create({
+    name: "baz",
+    target: "https://example.com",
+    secret: "secret",
+  });
+  assertEquals(result.ok, true);
+  assertEquals(false, createCalled); // create should not be called
+
+  // tear down
+  const cleanup = await a.delete("baz");
+  assertEquals(cleanup.ok, true);
+  aws.s3.checkBucket = original;
+  aws.s3.createBucket = originalCreateBucket;
+});
+
 test("post a job to queue", async () => {
   // setup
   await a.create({
