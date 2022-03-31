@@ -1,5 +1,6 @@
 import { crocks, S3, SQS } from "./deps.js";
 
+import { default as checkBucket } from "./lib/s3/check-bucket.js";
 import { default as createBucket } from "./lib/s3/create-bucket.js";
 import { default as createQueue } from "./lib/sqs/create-queue.js";
 import { default as listObjects } from "./lib/s3/list-objects.js";
@@ -26,6 +27,7 @@ export default of()
   .map(({ s3, sqs }) => ({
     s3: {
       createBucket: (name) => createBucket(name).runWith(s3),
+      checkBucket: (name) => checkBucket(name).runWith(s3),
       deleteBucket: (bucket) => deleteBucket(bucket).runWith(s3),
       listObjects: (bucket, folder) => listObjects(bucket, folder).runWith(s3),
       getObject: (bucket, name) => getObject(bucket, name).runWith(s3),

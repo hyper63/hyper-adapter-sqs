@@ -4,6 +4,7 @@ let doc = {};
 
 export default {
   s3: {
+    checkBucket,
     createBucket,
     deleteBucket,
     getObject,
@@ -29,6 +30,13 @@ function createQueue(name) {
 
 function createBucket(name) {
   return Promise.resolve(`/hyper-queue-${name}`);
+}
+
+function checkBucket() {
+  const err = new Error("foo");
+  err.code = "Http404"; // by default, do bucket does not exist
+
+  return Promise.reject(err);
 }
 
 function putObject(svc, name, value) {

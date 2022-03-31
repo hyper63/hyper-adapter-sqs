@@ -5,6 +5,7 @@ import processTasks from "./process-tasks.js";
 const { Async } = crocks;
 const {
   all,
+  always,
   assoc,
   dissoc,
   equals,
@@ -14,9 +15,15 @@ const {
   pluck,
   prop,
   propEq,
+  ifElse,
 } = R;
 
-const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
+const [ERROR, READY, QUEUES, BUCKET_NOT_FOUND_CODE] = [
+  "ERROR",
+  "READY",
+  "QUEUES",
+  "Http404",
+];
 
 /**
  * TODO: handle some errors
@@ -25,6 +32,7 @@ const [ERROR, READY, QUEUES] = ["ERROR", "READY", "QUEUES"];
 export function adapter({ name, aws: { s3, sqs } }) {
   const svcName = name;
   // wrap aws functions into Asyncs
+  const checkBucket = asyncifyMapTokenErrs(s3.checkBucket);
   const createBucket = asyncifyMapTokenErrs(s3.createBucket);
   const createQueue = asyncifyMapTokenErrs(sqs.createQueue);
   const getObject = asyncifyMapTokenErrs(s3.getObject);
@@ -75,7 +83,7 @@ export function adapter({ name, aws: { s3, sqs } }) {
     // create queue
     create: ({ name, target, secret }) => {
       return Async.all([
-        createBucket(svcName),
+        findOrCreateBucket(svcName),
         createQueue(svcName),
       ])
         .chain(() => getObject(svcName, QUEUES))
@@ -192,5 +200,21 @@ export function adapter({ name, aws: { s3, sqs } }) {
         keys,
       ),
     );
+  }
+
+  /**
+   * Check if the bucket exists, and create if not
+   */
+  function findOrCreateBucket(name) {
+    return checkBucket(name)
+      .bichain(
+        ifElse(
+          propEq("code", BUCKET_NOT_FOUND_CODE),
+          always(Async.Resolved(false)), // bucket does not exist
+          Async.Rejected, // some unknown err, so bubble
+        ),
+        always(Async.Resolved(true)),
+      )
+      .chain((exists) => exists ? Async.Resolved() : createBucket(name));
   }
 }
