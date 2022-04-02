@@ -1,5 +1,9 @@
 import { crocks, HyperErr, R } from "./deps.js";
-import { computeSignature, isAwsTokenErr } from "./lib/utils.js";
+import {
+  computeSignature,
+  isAwsNonExistentQueueErr,
+  isAwsTokenErr,
+} from "./lib/utils.js";
 
 const { always, assoc, compose, ifElse, isNil, map, identity } = R;
 const { Async } = crocks;
@@ -85,11 +89,18 @@ export default function (
     .chain((url) => receiveMessage(url, 10))
     // post messages to target
     .chain((msgs) => Async.all(map(postMessages(svcName), msgs)))
-    .bimap((err) => {
+    .bichain((err) => {
       if (isAwsTokenErr(err)) {
-        return HyperErr({ status: 500, msg: "Invalid AWS Credentials" });
+        return Async.Rejected(
+          HyperErr({ status: 500, msg: "Invalid AWS Credentials" }),
+        );
       }
 
-      return { msg: err.message };
-    }, identity);
+      if (isAwsNonExistentQueueErr(err)) {
+        console.log("Queue is not created. Mapping to no jobs.");
+        return Async.Resolved([]);
+      }
+
+      return Async.Rejected({ msg: err.message });
+    }, Async.Resolved);
 }
