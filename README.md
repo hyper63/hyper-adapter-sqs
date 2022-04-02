@@ -35,7 +35,8 @@ export default {
 In order to use this adapter you will need to have an AWS Account and will need
 the following information:
 
-- IAM User with access to SQS (AWS_ACCESS_KEY_ID, AWS_ACCESS_SECRET_KEY)
+- IAM User with access to SQS and S3 (AWS_ACCESS_KEY_ID, AWS_ACCESS_SECRET_KEY,
+  and optional AWS_SESSION_TOKEN)
 - AWS Region (default: us-east-1)
 
 > The AWS User will need the ability to manage s3 and SQS resources
@@ -46,7 +47,8 @@ You may set envrionment variables like so, and the adapter will use them:
 
 ```txt
 AWS_ACCESS_KEY_ID=XXXXX
-AWS_SECRET_ACCESS_KEY=XXXX
+AWS_SECRET_ACCESS_KEY=XXXXX
+AWS_SESSION_TOKEN=XXXXX
 AWS_REGION=XXXXX
 ```
 
@@ -69,22 +71,30 @@ export default {
 };
 ```
 
-> NOTE: You can explictly pass in AwsAccessKeyId, AwsSecretKey, region as
-> options in the adapter method.
-> `sqs(UNIQUE_NAME, { awsAccessKeyId, awsSecretKey, region: 'us-east-1'})`
+You can explictly pass in awsAccessKeyId, awsSecretKey, sessionToken, and region
+as options to the adapter method.
 
-## Example
-
-create queue
-
-```sh
-curl -X PUT -H 'Content-Type: application/json' -d '{"target": "url"}' cloud.hyper.io/queue/hooks
+```js
+sqs(UNIQUE_NAME, {
+  awsAccessKeyId,
+  awsSecretKey,
+  sessionToken,
+  region: "us-east-1",
+});
 ```
 
-post queue
+## Sleep
 
-```sh
-curl -X POST -H 'Content-Type: application/json' -d '{...}' cloud.hyper.io/queue/hooks
+This adapter's process task receives messages from SQS and sends them to your
+queue's worker url for processing. If no messages are received from SQS, this
+adapter's process task will pause, by default, for 10 seconds, before attempting
+to receive more messages from SQS
+
+You can also pass a `sleep` value to the adapter, which should be the number of
+milliseconds to pause if no messages are received from SQS:
+
+```js
+sqs(UNIQUE_NAME, { sleep: 5000, awsAccessKeyId: ...})
 ```
 
 ## Installation
