@@ -23,8 +23,9 @@ test("load - should return the object", () => {
   assert(res.aws.sqs);
 });
 
-test("load - should use provided credentials", async () => {
+test("load - should use provided options", async () => {
   const res = createFactory("foo", {
+    sleep: 1000,
     awsAccessKeyId: "foo",
     awsSecretKey: "bar",
     region: "fizz",
@@ -33,10 +34,12 @@ test("load - should use provided credentials", async () => {
   await res.factory.ensureCredentialsAvailable();
 
   assert(true);
+  assertEquals(res.sleep, 1000);
 });
 
-test("load - should use credentials passed to load", async () => {
+test("load - should use options passed to load", async () => {
   const res = createFactory("foo").load({
+    sleep: 1000,
     awsAccessKeyId: "foo",
     awsSecretKey: "bar",
     region: "fizz",
@@ -44,18 +47,23 @@ test("load - should use credentials passed to load", async () => {
 
   await res.factory.ensureCredentialsAvailable();
   assert(true);
+  assertEquals(res.sleep, 1000);
 });
 
-test("load - should merge credentials, preferring those passed to adapter", async () => {
-  const res = createFactory("foo", { awsAccessKeyId: "better-id" }).load({
-    awsAccessKeyId: "foo",
-    awsSecretKey: "bar",
-    region: "fizz",
-  });
+test("load - should merge options, preferring those passed to adapter", async () => {
+  const res = createFactory("foo", { sleep: 1000, awsAccessKeyId: "better-id" })
+    .load({
+      sleep: 2000,
+      awsAccessKeyId: "foo",
+      awsSecretKey: "bar",
+      region: "fizz",
+    });
 
   await res.factory.ensureCredentialsAvailable();
 
+  assertEquals(res.name, "foo");
   assertEquals(res.awsAccessKeyId, "better-id");
+  assertEquals(res.sleep, 1000);
   assertEquals(res.awsSecretKey, "bar");
   assertEquals(res.region, "fizz");
 });
@@ -69,4 +77,9 @@ test("load - should default the region to us-east-1", async () => {
   await res.factory.ensureCredentialsAvailable();
 
   assertEquals(res.region, "us-east-1");
+});
+
+test("load - should default the sleep to 10000", () => {
+  const res = createFactory("foo").load();
+  assertEquals(res.sleep, 10000);
 });
