@@ -19,7 +19,7 @@ const name = uniqueNamesGenerator({
 const hyperConfig = {
   app: appOpine,
   adapters: [
-    { port: PORT, plugins: [myAdapter(name)] },
+    { port: PORT, plugins: [myAdapter("timeout-test")] },
   ],
 };
 

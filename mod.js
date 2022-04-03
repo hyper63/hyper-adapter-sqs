@@ -21,15 +21,31 @@ const {
 export const PORT = "queue";
 
 /**
+ * @typedef {Object} SqsAdapterOptions
+ * @property {number} [sleep] - the number of milliseconds to wait
+ * to receive more jobs, if no jobs were recevied on the previous
+ * process task
+ * @property {string} [awsAccessKeyId] - the AWS Access Key ID to use. Defaults to Environment AWS_ACCESS_KEY_ID
+ * @property {string} [awsSecretKey] - the AWS Secret Key to use. Defaults to Environment AWS_SECRET_ACCESS_KEY
+ * @property {string} [sessionToken] - the AWS Session Token to use. Defaults to Environment AWS_SESSION_TOKEN
+ * @property {string} [region] - the AWS Region to use. Defaults to Environment AWS_REGION
+ *
  * @param {string} svcName - name of queue service
- * @param {object} [options] - optional set of config options for adapter
+ * @param {SqsAdapterOptions} [options] - optional set of config options for adapter
  */
 export default function sqsAdapter(svcName, options = {}) {
   const setNameOn = (obj) => assoc("name", __, obj);
-  const setAwsCreds = (env) =>
+  // sleep, aws credentials
+  const setOptions = (env) =>
     mergeRight(
       env,
       reject(isNil, options),
+    );
+
+  const setSleep = (env) =>
+    mergeRight(
+      { sleep: 10000 },
+      env,
     );
   const setAwsRegion = (env) =>
     mergeRight(
@@ -76,7 +92,8 @@ export default function sqsAdapter(svcName, options = {}) {
           notIsNull(svcName)
             .map(setNameOn(env))
         )
-        .map(setAwsCreds)
+        .map(setOptions)
+        .map(setSleep)
         .map(setAwsRegion)
         .map(createFactory)
         .map(loadAws)

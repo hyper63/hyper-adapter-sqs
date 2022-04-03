@@ -16,6 +16,7 @@ const {
   prop,
   propEq,
   ifElse,
+  identity,
 } = R;
 
 const [ERROR, READY, QUEUES, BUCKET_NOT_FOUND_CODE] = [
@@ -29,7 +30,7 @@ const [ERROR, READY, QUEUES, BUCKET_NOT_FOUND_CODE] = [
  * TODO: handle some errors
  * TODO: use addEventListener api to emit unhealthy state to core
  */
-export function adapter({ name, aws: { s3, sqs } }) {
+export function adapter({ name, sleep, aws: { s3, sqs } }) {
   const svcName = name;
   // wrap aws functions into Asyncs
   const checkBucket = asyncifyMapTokenErrs(s3.checkBucket);
@@ -49,31 +50,53 @@ export function adapter({ name, aws: { s3, sqs } }) {
   const listObjects = asyncifyMapTokenErrs(s3.listObjects);
   const asyncFetch = Async.fromPromise(fetch);
 
+  let timeout;
+  function queueProcessTasks(delay) {
+    timeout = setTimeout(() =>
+      processTasks(svcName, asyncFetch, {
+        getQueueUrl,
+        receiveMessage,
+        deleteMessage,
+        putObject,
+        deleteObject,
+      })
+        .bichain(
+          (e) => {
+            console.log("error processing jobs: ", e.msg || e.message);
+            // error processing jobs, so converge to no jobs processed
+            return Async.Resolved([]);
+          },
+          (r) => {
+            console.log("processed jobs: ", r);
+            return Async.Resolved(r || []);
+          },
+        )
+        .map(
+          (r) => {
+            let nextDelay = 500; // wait half a second by default, effectively immediate
+            if (!r.length) {
+              console.log(`Sleeping for ${sleep} milliseconds...`);
+              // no jobs to be processed, so wait the sleep amount
+              nextDelay = sleep;
+            }
+
+            return nextDelay;
+          },
+        )
+        // queue up the next processTasks
+        .map(queueProcessTasks)
+        .fork(identity, identity), delay);
+  }
+
   /*
-    Listen for queue messages every 10 seconds
+    Listen for queue messages, starting in {sleep} milliseconds
   */
-  let interval;
   if (Deno.env.get("DENO_ENV") !== "test") {
-    // TODO: emit event when unhealthy, so core can reload this adapter
-    interval = setInterval(
-      () =>
-        processTasks(svcName, asyncFetch, {
-          getQueueUrl,
-          receiveMessage,
-          deleteMessage,
-          putObject,
-          deleteObject,
-        })
-          .fork(
-            (e) => console.log("error processing jobs: ", e.msg || e.message),
-            (r) => console.log("processed jobs: ", r),
-          ),
-      10 * 1000,
-    );
+    queueProcessTasks(sleep);
   }
 
   return Object.freeze({
-    cleanup: () => interval && clearInterval(interval),
+    cleanup: () => timeout && clearTimeout(timeout),
     // list queues
     index: () =>
       getObject(svcName, QUEUES).map(keys).bichain(
