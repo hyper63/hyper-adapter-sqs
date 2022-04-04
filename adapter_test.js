@@ -97,6 +97,40 @@ test("get error jobs from the queue", async () => {
   await a.delete("test2");
 });
 
+test("processed job race condition is handled", async () => {
+  const originalGetObject = aws.s3.getObject;
+  const originalListObjects = aws.s3.listObjects;
+
+  aws.s3.getObject = (_, name) => {
+    if (name.includes("not-found")) {
+      const err = new Error("NoSuchKey - woops");
+      err.code = "NoSuchKey";
+      return Promise.reject(err);
+    }
+
+    return Promise.resolve({ key: name, status: "READY" });
+  };
+
+  aws.s3.listObjects = () =>
+    Promise.resolve(["test2/key-1", "test2/not-found"]);
+  const a = adapter({ name: "foobar", aws });
+  // setup
+  await a.create({
+    name: "test2",
+    target: "https://jsonplaceholder.typicode.com/posts",
+  });
+
+  // test
+  const result = await a.get({ name: "test2", status: "READY" });
+  assertEquals(result.ok, true);
+  assertEquals(result.jobs.length, 1);
+
+  // tear down
+  await a.delete("test2");
+  aws.s3.getObject = originalGetObject;
+  aws.s3.listObjects = originalListObjects;
+});
+
 test("retry an errored job from the queue", async () => {
   // setup
   await a.create({

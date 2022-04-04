@@ -1,5 +1,9 @@
 import { crocks, R } from "./deps.js";
-import { asyncifyMapTokenErrs, handleHyperErr } from "./lib/utils.js";
+import {
+  asyncifyMapTokenErrs,
+  handleHyperErr,
+  isAwsNoSuchKeyErr,
+} from "./lib/utils.js";
 import processTasks from "./process-tasks.js";
 
 const { Async } = crocks;
@@ -19,9 +23,10 @@ const {
   identity,
 } = R;
 
-const [ERROR, READY, QUEUES, BUCKET_NOT_FOUND_CODE] = [
+const [ERROR, READY, PROCESSED, QUEUES, BUCKET_NOT_FOUND_CODE] = [
   "ERROR",
   "READY",
+  "PROCESSED",
   "QUEUES",
   "Http404",
 ];
@@ -112,7 +117,7 @@ export function adapter({ name, sleep, aws: { s3, sqs } }) {
         .chain(() => getObject(svcName, QUEUES))
         .bichain(
           (err) =>
-            err.message.includes("NoSuchKey")
+            isAwsNoSuchKeyErr(err)
               ? putObject(svcName, QUEUES, {}).map(() => ({}))
               : Async.Rejected(err),
           Async.Resolved,
@@ -219,7 +224,21 @@ export function adapter({ name, sleep, aws: { s3, sqs } }) {
   function includeDocs(keys) {
     return Async.all(
       map(
-        (key) => getObject(svcName, key),
+        (key) =>
+          getObject(svcName, key)
+            .bichain(
+              (err) => {
+                /**
+                 * Since fetching the list of object keys,
+                 * the object was deleted (ie. processed), (race condition)
+                 * so just return a mock PROCESSED object that is filtered out anyway
+                 */
+                return isAwsNoSuchKeyErr(err)
+                  ? Async.Resolved({ status: PROCESSED })
+                  : Async.Rejected(err);
+              },
+              Async.Resolved,
+            ),
         keys,
       ),
     );
