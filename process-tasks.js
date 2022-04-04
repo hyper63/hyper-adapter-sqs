@@ -5,7 +5,7 @@ import {
   isAwsTokenErr,
 } from "./lib/utils.js";
 
-const { always, assoc, compose, ifElse, isNil, map, identity } = R;
+const { always, assoc, compose, ifElse, isNil, map } = R;
 const { Async } = crocks;
 
 export default function (
@@ -68,13 +68,15 @@ export default function (
                 const msg = JSON.parse(Body);
                 return res.ok
                   ? deleteObject(svcName, `${msg.queue}/${MessageId}`)
-                  : Async.fromPromise(res.text)().chain((txt) =>
-                    putObject(
-                      svcName,
-                      `${msg.queue}/${MessageId}`,
-                      setToErrorState(txt, msg),
-                    )
-                  );
+                  : Async.of(res)
+                    .chain(Async.fromPromise((res) => res.text()))
+                    .chain((txt) =>
+                      putObject(
+                        svcName,
+                        `${msg.queue}/${MessageId}`,
+                        setToErrorState(txt, msg),
+                      )
+                    );
               },
             )
         )
