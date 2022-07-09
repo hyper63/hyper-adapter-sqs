@@ -5,7 +5,7 @@ import { assert, assertEquals } from "./deps_dev.js";
 
 import aws from "./aws-mock.js";
 import processTasks from "./process-tasks.js";
-import { computeSignature } from "./lib/utils.js";
+import { computeSignature, logger } from "./lib/utils.js";
 
 const { s3, sqs } = aws;
 const { Async } = crocks;
@@ -44,6 +44,7 @@ test("receive messages", async () => {
     deleteMessage,
     putObject,
     deleteObject,
+    log: logger(0),
   })
     .toPromise();
   assertEquals(result[0].ok, true);
@@ -56,6 +57,7 @@ test("map token error to HyperErr", async () => {
     deleteMessage,
     putObject,
     deleteObject,
+    log: logger(0),
   })
     .toPromise().catch((e) => e);
   assertEquals(result.ok, false);
@@ -77,6 +79,7 @@ test("failed to send to worker - mark job as error", async () => {
       return Async.fromPromise(s3.putObject)(a, b, c);
     }),
     deleteObject,
+    log: logger(0),
   })
     .toPromise();
   assertEquals(result[0].ok, true);
@@ -119,6 +122,7 @@ test("computes a signature", async () => {
     deleteMessage,
     putObject,
     deleteObject,
+    log: logger(0),
   })
     .toPromise();
   assertEquals(result[0].ok, true);

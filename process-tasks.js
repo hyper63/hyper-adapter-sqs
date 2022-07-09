@@ -11,7 +11,14 @@ const { Async } = crocks;
 export default function (
   svcName,
   asyncFetch,
-  { getQueueUrl, receiveMessage, deleteMessage, putObject, deleteObject },
+  {
+    getQueueUrl,
+    receiveMessage,
+    deleteMessage,
+    putObject,
+    deleteObject,
+    log,
+  },
 ) {
   const setToErrorState = (txt, msg) =>
     compose(
@@ -88,7 +95,7 @@ export default function (
   }
 
   return getQueueUrl(svcName)
-    .chain((url) => receiveMessage(url, 10))
+    .chain((url) => receiveMessage(url, 1))
     // post messages to target
     .chain((msgs) => Async.all(map(postMessages(svcName), msgs)))
     .bichain((err) => {
@@ -99,7 +106,7 @@ export default function (
       }
 
       if (isAwsNonExistentQueueErr(err)) {
-        console.log("Queue is not created. Mapping to no jobs.");
+        log("Queue is not created. Mapping to no jobs.");
         return Async.Resolved([]);
       }
 

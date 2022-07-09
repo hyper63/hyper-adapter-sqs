@@ -3,6 +3,7 @@ import {
   asyncifyMapTokenErrs,
   handleHyperErr,
   isAwsNoSuchKeyErr,
+  logger,
 } from "./lib/utils.js";
 import processTasks from "./process-tasks.js";
 
@@ -35,7 +36,7 @@ const [ERROR, READY, PROCESSED, QUEUES, BUCKET_NOT_FOUND_CODE] = [
  * TODO: handle some errors
  * TODO: use addEventListener api to emit unhealthy state to core
  */
-export function adapter({ name, sleep, aws: { s3, sqs } }) {
+export function adapter({ name, concurrency, sleep, aws: { s3, sqs } }) {
   const svcName = name;
   // wrap aws functions into Asyncs
   const checkBucket = asyncifyMapTokenErrs(s3.checkBucket);
@@ -55,53 +56,68 @@ export function adapter({ name, sleep, aws: { s3, sqs } }) {
   const listObjects = asyncifyMapTokenErrs(s3.listObjects);
   const asyncFetch = Async.fromPromise(fetch);
 
-  let timeout;
-  function queueProcessTasks(delay) {
-    timeout = setTimeout(() =>
-      processTasks(svcName, asyncFetch, {
-        getQueueUrl,
-        receiveMessage,
-        deleteMessage,
-        putObject,
-        deleteObject,
-      })
-        .bichain(
-          (e) => {
-            console.log("error processing jobs: ", e.msg || e.message);
-            // error processing jobs, so converge to no jobs processed
-            return Async.Resolved([]);
-          },
-          (r) => {
-            console.log("processed jobs: ", r);
-            return Async.Resolved(r || []);
-          },
-        )
-        .map(
-          (r) => {
-            let nextDelay = 500; // wait half a second by default, effectively immediate
-            if (!r.length) {
-              console.log(`Sleeping for ${sleep} milliseconds...`);
-              // no jobs to be processed, so wait the sleep amount
-              nextDelay = sleep;
-            }
-
-            return nextDelay;
-          },
-        )
-        // queue up the next processTasks
-        .map(queueProcessTasks)
-        .fork(identity, identity), delay);
-  }
-
-  /*
-    Listen for queue messages, starting in {sleep} milliseconds
-  */
+  /**
+   * Listen for queue messages, starting in {sleep} milliseconds.
+   * Instead of 1 task, processing {concurrency} messages at a time:
+   * [x,x,x,x,x,x,x] -> [x,x,x,x,x,x,x] -> ....
+   *
+   * We use {concurrency} tasks, each processing 1 message a time:
+   * [
+   *  [x] -> [x] -> [x] -> [x] -> ...
+   *  [x] -> [x] -> ...
+   *  [x] -> [x] -> [x] -> ...
+   * ]
+   *
+   * This hedges against long-processing messages from stalling all
+   * message retrieval
+   */
+  const timeouts = [];
   if (Deno.env.get("DENO_ENV") !== "test") {
-    queueProcessTasks(sleep);
+    Array(concurrency).fill(0).forEach((_, i) => {
+      const log = logger(i);
+      timeouts.push(queueProcessTasks(sleep));
+      function queueProcessTasks(delay) {
+        return setTimeout(() =>
+          processTasks(svcName, asyncFetch, {
+            getQueueUrl,
+            receiveMessage,
+            deleteMessage,
+            putObject,
+            deleteObject,
+            log,
+          })
+            .bichain(
+              (e) => {
+                log("error processing jobs: ", e.msg || e.message);
+                // error processing jobs, so converge to no jobs processed
+                return Async.Resolved([]);
+              },
+              (r) => {
+                log("processed jobs: ", r);
+                return Async.Resolved(r || []);
+              },
+            )
+            .map(
+              (r) => {
+                let nextDelay = 500; // wait half a second by default, effectively immediate
+                if (!r.length) {
+                  log(`Sleeping for ${sleep} milliseconds...`);
+                  // no jobs to be processed, so wait the sleep amount
+                  nextDelay = sleep;
+                }
+
+                return nextDelay;
+              },
+            )
+            // queue up the next processTasks
+            .map(queueProcessTasks)
+            .fork(identity, identity), delay);
+      }
+    });
   }
 
   return Object.freeze({
-    cleanup: () => timeout && clearTimeout(timeout),
+    cleanup: () => timeouts && timeouts.map((t) => clearTimeout(t)),
     // list queues
     index: () =>
       getObject(svcName, QUEUES).map(keys).bichain(
