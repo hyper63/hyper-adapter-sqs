@@ -47,6 +47,13 @@ export default function sqsAdapter(svcName, options = {}) {
       { sleep: 10000 },
       env,
     );
+
+  const setConcurrency = (env) =>
+    mergeRight(
+      { concurrency: 20 },
+      env,
+    );
+
   const setAwsRegion = (env) =>
     mergeRight(
       { region: "us-east-1" },
@@ -94,6 +101,7 @@ export default function sqsAdapter(svcName, options = {}) {
         )
         .map(setOptions)
         .map(setSleep)
+        .map(setConcurrency)
         .map(setAwsRegion)
         .map(createFactory)
         .map(loadAws)
