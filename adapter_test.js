@@ -93,6 +93,15 @@ test("adapter", async (t) => {
     //await t.step
     const result = await a.get({ name: "test2", status: "ERROR" });
     assertEquals(result.ok, true);
+    assert(result.jobs.length);
+
+    result.jobs.forEach((job) => {
+      assert(job.id);
+      assert(job.status);
+      assert(!job.queue);
+      assert(!job.secret);
+      assert(!job.target);
+    });
 
     // tear down
     await a.delete("test2");
