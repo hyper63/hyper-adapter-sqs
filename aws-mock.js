@@ -47,6 +47,7 @@ function putObject(svc, name, value) {
 function getObject(svc, name) {
   if (name === "test2/16613e7e-2331-4c7a-bf37-fe5861f2abe9") {
     return Promise.resolve({
+      id: "1234",
       target: "https://jsonplaceholder.typicode.com/posts",
       queue: "test2",
       job: { hello: "world" },
@@ -75,7 +76,7 @@ function deleteBucket(name) {
 }
 
 function sendMessage(url, msg) {
-  return Promise.resolve({ ok: true });
+  return Promise.resolve({ ok: true, MessageId: "1234" });
 }
 
 function receiveMessage(url, count) {

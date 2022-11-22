@@ -1,6 +1,7 @@
 import { crocks, R } from "./deps.js";
 import {
   asyncifyMapTokenErrs,
+  compose,
   handleHyperErr,
   isAwsNoSuchKeyErr,
   logger,
@@ -177,8 +178,7 @@ export function adapter({ name, concurrency, sleep, aws: { s3, sqs } }) {
         .map(assoc("queue", name))
         .map(assoc("job", job))
         .chain(postJob(name))
-        //.map(result => (console.log('result: ', result), result))
-        .map(() => ({ ok: true }))
+        .map((res) => ({ ok: true, id: res.id }))
         .bichain(
           handleHyperErr,
           Async.Resolved,
@@ -202,9 +202,9 @@ export function adapter({ name, concurrency, sleep, aws: { s3, sqs } }) {
           if (status === ERROR) {
             return postJob(name)(job)
               .chain(() => deleteObject(svcName, `${name}/${id}`))
-              .map(() => ({ ok: true }));
+              .map(() => ({ ok: true, id }));
           }
-          return Async.Resolved({ ok: true });
+          return Async.Resolved({ ok: true, id });
         })
         .bichain(
           handleHyperErr,
@@ -214,7 +214,7 @@ export function adapter({ name, concurrency, sleep, aws: { s3, sqs } }) {
     // cancel job
     cancel: ({ name, id }) =>
       deleteObject(svcName, `${name}/${id}`)
-        .map(() => ({ ok: true }))
+        .map(() => ({ ok: true, id }))
         .bichain(
           handleHyperErr,
           Async.Resolved,
@@ -223,16 +223,19 @@ export function adapter({ name, concurrency, sleep, aws: { s3, sqs } }) {
   });
 
   function postJob(queue) {
-    return (msg) =>
+    return (job) =>
       getQueueUrl(svcName)
-        .chain((url) => sendMessage(url, msg))
+        .chain((url) => sendMessage(url, job))
         .map(({ MessageId }) => ({
           ok: true,
           id: MessageId,
-          msg: assoc("status", READY, msg),
+          job: compose(
+            assoc("id", MessageId),
+            assoc("status", READY),
+          )(job),
         }))
         .chain((result) =>
-          putObject(svcName, `${queue}/${result.id}`, result.msg).map(() =>
+          putObject(svcName, `${queue}/${result.id}`, result.job).map(() =>
             result
           )
         );

@@ -3,7 +3,7 @@ import "https://deno.land/x/dotenv@v3.1.0/load.ts";
 import aws from "./aws-mock.js";
 //import aws from './aws.js'
 
-import { assertEquals } from "./deps_dev.js";
+import { assert, assertEquals } from "./deps_dev.js";
 import { adapter } from "./adapter.js";
 import { tokenErrs } from "./lib/utils.js";
 
@@ -77,6 +77,7 @@ test("adapter", async (t) => {
     // post job
     const result = await a.post({ name: "test", job: { hello: "world" } });
     assertEquals(result.ok, true);
+    assert(result.id);
 
     // tear down
     await a.delete("test");
@@ -141,6 +142,7 @@ test("adapter", async (t) => {
     // test
     const result = await a.retry({ name: "test2", id: "1" });
     assertEquals(result.ok, true);
+    assert(result.id);
 
     // tear down
     await a.delete("test2");
@@ -156,6 +158,7 @@ test("adapter", async (t) => {
     // test
     const result = await a.cancel({ name: "test2", id: "1" });
     assertEquals(result.ok, true);
+    assert(result.id);
 
     // tear down
     await a.delete("test2");
