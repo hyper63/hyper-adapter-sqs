@@ -23,6 +23,7 @@ const {
   propEq,
   ifElse,
   identity,
+  omit,
 } = R;
 
 const [ERROR, READY, PROCESSED, QUEUES, BUCKET_NOT_FOUND_CODE] = [
@@ -189,6 +190,7 @@ export function adapter({ name, concurrency, sleep, aws: { s3, sqs } }) {
       listObjects(svcName, name)
         .chain(includeDocs)
         .map(filter(propEq("status", status)))
+        .map(map(omit(["secret", "queue", "target"])))
         .map((jobs) => ({ ok: true, jobs }))
         .bichain(
           handleHyperErr,

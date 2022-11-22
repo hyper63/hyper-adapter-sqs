@@ -50,6 +50,7 @@ function getObject(svc, name) {
       id: "1234",
       target: "https://jsonplaceholder.typicode.com/posts",
       queue: "test2",
+      secret: "foobar",
       job: { hello: "world" },
       status: "ERROR",
     });
