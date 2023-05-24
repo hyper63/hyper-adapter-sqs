@@ -1,4 +1,4 @@
-import { assert, assertEquals, validateFactorySchema } from "./deps_dev.js";
+import { assert, assertEquals, validateFactorySchema } from "./dev_deps.js";
 
 import createFactory from "./mod.js";
 
