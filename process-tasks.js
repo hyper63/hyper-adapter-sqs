@@ -1,12 +1,8 @@
-import { crocks, HyperErr, R } from "./deps.js";
-import {
-  computeSignature,
-  isAwsNonExistentQueueErr,
-  isAwsTokenErr,
-} from "./lib/utils.js";
+import { crocks, HyperErr, R } from './deps.js'
+import { computeSignature, isAwsNonExistentQueueErr, isAwsTokenErr } from './lib/utils.js'
 
-const { always, assoc, compose, ifElse, isNil, map } = R;
-const { Async } = crocks;
+const { always, assoc, compose, ifElse, isNil, map } = R
+const { Async } = crocks
 
 export default function (
   svcName,
@@ -22,27 +18,27 @@ export default function (
 ) {
   const setToErrorState = (txt, msg) =>
     compose(
-      assoc("status", "ERROR"),
-      assoc("error", txt),
-    )(msg);
+      assoc('status', 'ERROR'),
+      assoc('error', txt),
+    )(msg)
 
   const headers = {
-    "content-type": "application/json",
-  };
+    'content-type': 'application/json',
+  }
   const getHeaders = (secret, job) =>
     ifElse(
       isNil,
       always(headers),
       () => {
-        const timeInMilli = new Date().getTime().toString();
+        const timeInMilli = new Date().getTime().toString()
 
         return assoc(
-          "X-HYPER-SIGNATURE",
+          'X-HYPER-SIGNATURE',
           `t=${timeInMilli},sig=${computeSignature(secret, job, timeInMilli)}`,
           headers,
-        );
+        )
       },
-    )(secret);
+    )(secret)
 
   function postMessages(svcName) {
     return ({ MessageId, Body, ReceiptHandle }) =>
@@ -51,14 +47,14 @@ export default function (
         // send to target
         .chain(({ target, secret, job }) =>
           asyncFetch(target, {
-            method: "POST",
+            method: 'POST',
             headers: getHeaders(secret, job),
             body: JSON.stringify(job),
           })
             .bichain(
               // Error
               (err) => {
-                const msg = JSON.parse(Body);
+                const msg = JSON.parse(Body)
                 return Async.of(
                   JSON.stringify({ msg: err.message, stack: err.stack }),
                 )
@@ -68,22 +64,20 @@ export default function (
                       `${msg.queue}/${MessageId}`,
                       setToErrorState(txt, msg),
                     )
-                  );
+                  )
               },
               // Response
               (res) => {
-                const msg = JSON.parse(Body);
-                return res.ok
-                  ? deleteObject(svcName, `${msg.queue}/${MessageId}`)
-                  : Async.of(res)
-                    .chain(Async.fromPromise((res) => res.text()))
-                    .chain((txt) =>
-                      putObject(
-                        svcName,
-                        `${msg.queue}/${MessageId}`,
-                        setToErrorState(txt, msg),
-                      )
-                    );
+                const msg = JSON.parse(Body)
+                return res.ok ? deleteObject(svcName, `${msg.queue}/${MessageId}`) : Async.of(res)
+                  .chain(Async.fromPromise((res) => res.text()))
+                  .chain((txt) =>
+                    putObject(
+                      svcName,
+                      `${msg.queue}/${MessageId}`,
+                      setToErrorState(txt, msg),
+                    )
+                  )
               },
             )
         )
@@ -91,7 +85,7 @@ export default function (
         .chain(() =>
           getQueueUrl(svcName)
             .chain((url) => deleteMessage(url, ReceiptHandle))
-        );
+        )
   }
 
   return getQueueUrl(svcName)
@@ -101,15 +95,15 @@ export default function (
     .bichain((err) => {
       if (isAwsTokenErr(err)) {
         return Async.Rejected(
-          HyperErr({ status: 500, msg: "Invalid AWS Credentials" }),
-        );
+          HyperErr({ status: 500, msg: 'Invalid AWS Credentials' }),
+        )
       }
 
       if (isAwsNonExistentQueueErr(err)) {
-        log("Queue is not created. Mapping to no jobs.");
-        return Async.Resolved([]);
+        log('Queue is not created. Mapping to no jobs.')
+        return Async.Resolved([])
       }
 
-      return Async.Rejected({ msg: err.message });
-    }, Async.Resolved);
+      return Async.Rejected({ msg: err.message })
+    }, Async.Resolved)
 }

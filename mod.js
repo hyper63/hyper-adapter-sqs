@@ -1,17 +1,11 @@
-import {
-  ApiFactory,
-  AwsEndpointResolver,
-  crocks,
-  DefaultCredentialsProvider,
-  R,
-} from "./deps.js";
+import { ApiFactory, AwsEndpointResolver, crocks, DefaultCredentialsProvider, R } from './deps.js'
 
-import { adapter } from "./adapter.js";
-import aws from "./aws.js";
+import { adapter } from './adapter.js'
+import aws from './aws.js'
 
-const ID = "sqs";
-const { Either } = crocks;
-const { Left, Right, of } = Either;
+const ID = 'sqs'
+const { Either } = crocks
+const { Left, Right, of } = Either
 const {
   __,
   assoc,
@@ -22,9 +16,9 @@ const {
   mergeRight,
   over,
   defaultTo,
-} = R;
+} = R
 
-export const PORT = "queue";
+export const PORT = 'queue'
 
 /**
  * @typedef {Object} SqsAdapterOptions
@@ -40,34 +34,34 @@ export const PORT = "queue";
  * @param {SqsAdapterOptions} [options] - optional set of config options for adapter
  */
 export default function sqsAdapter(svcName, options = {}) {
-  const setNameOn = (obj) => assoc("name", __, obj);
+  const setNameOn = (obj) => assoc('name', __, obj)
   // sleep, aws credentials
   const setOptions = (env) =>
     mergeRight(
       env,
       reject(isNil, options),
-    );
+    )
 
   const setSleep = (env) =>
     mergeRight(
       { sleep: 10000 },
       env,
-    );
+    )
 
   const setConcurrency = (env) =>
     mergeRight(
       { concurrency: 20 },
       env,
-    );
+    )
 
   const setAwsRegion = (env) =>
     mergeRight(
-      { region: "us-east-1" },
+      { region: 'us-east-1' },
       env,
-    );
+    )
   const createFactory = (env) =>
     over(
-      lensProp("factory"),
+      lensProp('factory'),
       () =>
         /**
          * Disable using Dualstack endpoints, so this adapter will use VPC Gateway endpoint when used within a VPC
@@ -75,21 +69,19 @@ export default function sqsAdapter(svcName, options = {}) {
          * - For Dualstack description https://docs.aws.amazon.com/AmazonS3/latest/userguide/dual-stack-endpoints.html#dual-stack-endpoints-description
          */
         new ApiFactory({
-          credentialProvider:
-            (env.awsAccessKeyId && env.awsSecretKey && env.region)
-              ? { getCredentials: () => Promise.resolve(env) }
-              : {
-                ...DefaultCredentialsProvider,
-                getCredentials: () =>
-                  DefaultCredentialsProvider.getCredentials()
-                    .then(setAwsRegion),
-              },
+          credentialProvider: (env.awsAccessKeyId && env.awsSecretKey && env.region)
+            ? { getCredentials: () => Promise.resolve(env) }
+            : {
+              ...DefaultCredentialsProvider,
+              getCredentials: () =>
+                DefaultCredentialsProvider.getCredentials()
+                  .then(setAwsRegion),
+            },
           endpointResolver: new AwsEndpointResolver({ useDualstack: false }),
         }),
       env,
-    );
-  const loadAws = (env) =>
-    over(lensProp("aws"), () => aws.runWith(env.factory), env);
+    )
+  const loadAws = (env) => over(lensProp('aws'), () => aws.runWith(env.factory), env)
 
   return Object.freeze({
     id: ID,
@@ -110,31 +102,29 @@ export default function sqsAdapter(svcName, options = {}) {
         .map((
           tap,
         ) => (console.log(
-          "data",
-          redact(["awsAccessKeyId", "awsSecretKey"], { ...tap }),
+          'data',
+          redact(['awsAccessKeyId', 'awsSecretKey'], { ...tap }),
         ),
           tap)
         ) // print out current state
         .either(
-          (e) => (console.log("ERROR: In Load Method", e.message), e),
+          (e) => (console.log('ERROR: In Load Method', e.message), e),
           identity,
         ),
     link: (env) => () => adapter(env), // env: {name, aws: {s3, sqs}, factory}
-  });
+  })
 }
 
 function notIsNull(s) {
-  return isNil(s)
-    ? Left({ message: "SQS Service Name: can not be null!" })
-    : Right(s);
+  return isNil(s) ? Left({ message: 'SQS Service Name: can not be null!' }) : Right(s)
 }
 
 function redact(keys, obj) {
   keys.forEach(
     (key) => {
-      obj[key] = "****";
+      obj[key] = '****'
     },
-  );
+  )
 
-  return obj;
+  return obj
 }

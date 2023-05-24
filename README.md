@@ -22,21 +22,21 @@ hyper-adapter-sqs
 `hyper.config.js`
 
 ```js
-import { default as sqs } from "https://x.nest.land/hyper-adapter-sqs@0.1.4/mod.js";
+import { default as sqs } from 'https://x.nest.land/hyper-adapter-sqs@0.1.4/mod.js'
 
 export default {
   app: opine,
   adapter: [
-    { port: "queue", plugins: [sqs("UNIQUE_NAME")] },
+    { port: 'queue', plugins: [sqs('UNIQUE_NAME')] },
   ],
-};
+}
 ```
 
-In order to use this adapter you will need to have an AWS Account and will need
-the following information:
+In order to use this adapter you will need to have an AWS Account and will need the following
+information:
 
-- IAM User with access to SQS and S3 (AWS_ACCESS_KEY_ID, AWS_ACCESS_SECRET_KEY,
-  and optional AWS_SESSION_TOKEN)
+- IAM User with access to SQS and S3 (AWS_ACCESS_KEY_ID, AWS_ACCESS_SECRET_KEY, and optional
+  AWS_SESSION_TOKEN)
 - AWS Region (default: us-east-1)
 
 > The AWS User will need the ability to manage s3 and SQS resources
@@ -54,44 +54,43 @@ AWS_REGION=XXXXX
 
 Then when you configure the hyper service, you can setup the sqs adapter like:
 
-> The unique name is an alphanumeric string that contains identifing
-> information, this will enable you to identify the bucket and queue which will
-> be prefixed by 'hyper-queue-' and whatever name you provide.
+> The unique name is an alphanumeric string that contains identifing information, this will enable
+> you to identify the bucket and queue which will be prefixed by 'hyper-queue-' and whatever name
+> you provide.
 
 `hyper.config.js`
 
 ```js
-import { default as sqs } from "https://x.nest.land/hyper-adapter-sqs@0.1.4/mod.js";
+import { default as sqs } from 'https://x.nest.land/hyper-adapter-sqs@0.1.4/mod.js'
 
 export default {
   app: opine,
   adapter: [
-    { port: "queue", plugins: [sqs("UNIQUE_NAME")] },
+    { port: 'queue', plugins: [sqs('UNIQUE_NAME')] },
   ],
-};
+}
 ```
 
-You can explictly pass in awsAccessKeyId, awsSecretKey, sessionToken, and region
-as options to the adapter method.
+You can explictly pass in awsAccessKeyId, awsSecretKey, sessionToken, and region as options to the
+adapter method.
 
 ```js
 sqs(UNIQUE_NAME, {
   awsAccessKeyId,
   awsSecretKey,
   sessionToken,
-  region: "us-east-1",
-});
+  region: 'us-east-1',
+})
 ```
 
 ## Sleep
 
-This adapter's process task receives messages from SQS and sends them to your
-queue's worker url for processing. If no messages are received from SQS, this
-adapter's process task will pause, by default, for 10 seconds, before attempting
-to receive more messages from SQS
+This adapter's process task receives messages from SQS and sends them to your queue's worker url for
+processing. If no messages are received from SQS, this adapter's process task will pause, by
+default, for 10 seconds, before attempting to receive more messages from SQS
 
-You can also pass a `sleep` value to the adapter, which should be the number of
-milliseconds to pause if no messages are received from SQS:
+You can also pass a `sleep` value to the adapter, which should be the number of milliseconds to
+pause if no messages are received from SQS:
 
 ```js
 sqs(UNIQUE_NAME, { sleep: 5000, awsAccessKeyId: ...})
@@ -105,7 +104,7 @@ This is a Deno module available to import from
 deps.js
 
 ```js
-export { default as sqs } from "https://x.nest.land/hyper-adapter-sqs@0.1.4/mod.js";
+export { default as sqs } from 'https://x.nest.land/hyper-adapter-sqs@0.1.4/mod.js'
 ```
 
 ## Contributing
