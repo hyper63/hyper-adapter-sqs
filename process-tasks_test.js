@@ -1,7 +1,7 @@
 // deno-lint-ignore-file
 import "https://deno.land/x/dotenv@v3.1.0/load.ts";
 import { crocks, R } from "./deps.js";
-import { assert, assertEquals } from "./deps_dev.js";
+import { assert, assertEquals } from "./dev_deps.js";
 
 import aws from "./aws-mock.js";
 import processTasks from "./process-tasks.js";

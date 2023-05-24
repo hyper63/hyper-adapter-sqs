@@ -3,7 +3,7 @@ import "https://deno.land/x/dotenv@v3.1.0/load.ts";
 import aws from "./aws-mock.js";
 //import aws from './aws.js'
 
-import { assert, assertEquals } from "./deps_dev.js";
+import { assert, assertEquals } from "./dev_deps.js";
 import { adapter } from "./adapter.js";
 import { tokenErrs } from "./lib/utils.js";
 
