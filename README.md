@@ -5,7 +5,7 @@ hyper-adapter-sqs
 
 <p align="center">
   <a href="https://nest.land/package/hyper-adapter-sqs"><img src="https://nest.land/badge.svg" alt="Nest Badge" /></a>
-  <a href="https://github.com/hyper63/hyper-adapter-sqs/actions/workflows/test.yml"><img src="https://github.com/hyper63/hyper-adapter-sqs/actions/workflows/test.yml/badge.svg" alt="Test" /></a>
+  <a href="https://github.com/hyper63/hyper-adapter-sqs/actions/workflows/tes-and-publish.yml"><img src="https://github.com/hyper63/hyper-adapter-sqs/actions/workflows/test-and-publish.yml/badge.svg" alt="Test" /></a>
   <a href="https://github.com/hyper63/hyper-adapter-sqs/tags/"><img src="https://img.shields.io/github/tag/hyper63/hyper-adapter-sqs" alt="Current Version" /></a>
 </p>
 
