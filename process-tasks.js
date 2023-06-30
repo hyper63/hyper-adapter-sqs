@@ -62,7 +62,7 @@ export default function (
                     putObject(
                       svcName,
                       `${msg.queue}/${MessageId}`,
-                      setToErrorState(txt, msg),
+                      setToErrorState(txt, { ...msg, id: MessageId }),
                     )
                   )
               },
