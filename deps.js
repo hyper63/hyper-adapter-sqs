@@ -13,4 +13,4 @@ export { hmac } from 'https://deno.land/x/hmac@v2.0.1/mod.ts'
 export {
   HyperErr,
   isHyperErr,
-} from 'https://raw.githubusercontent.com/hyper63/hyper/hyper-utils%40v0.1.0/packages/utils/hyper-err.js'
+} from 'https://raw.githubusercontent.com/hyper63/hyper/hyper-utils%40v0.1.1/packages/utils/hyper-err.js'
