@@ -5,7 +5,7 @@
   "description": "Hyper Queue port adapter for aws sqs",
   "homepage": "https://github.com/hyper63/hyper-adapter-sqs",
   "repo": "https://github.com/hyper63/hyper-adapter-sqs",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "unstable": false,
   "unlisted": false,
   "files": [
