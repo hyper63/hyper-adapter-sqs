@@ -9,13 +9,17 @@ hyper-adapter-sqs
   <a href="https://github.com/hyper63/hyper-adapter-sqs/tags/"><img src="https://img.shields.io/github/tag/hyper63/hyper-adapter-sqs" alt="Current Version" /></a>
 </p>
 
-## Table of Contents
+<!-- toc -->
 
 - [Getting Started](#getting-started)
-- [Example](#example)
+  - [ENV VARS](#env-vars)
+- [Sleep](#sleep)
 - [Installation](#installation)
 - [Contributing](#contributing)
+- [Testing](#testing)
 - [License](#license)
+
+<!-- tocstop -->
 
 ## Getting Started
 
